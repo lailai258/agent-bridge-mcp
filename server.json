@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.agent-bridge/ai-cli-mcp-server",
+  "description": "MCP-only server for running Claude, Codex, Gemini, Forge, and OpenCode CLIs as background jobs",
+  "repository": {
+    "url": "https://github.com/agent-bridge/agent-bridge-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "ai-cli-mcp-server",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

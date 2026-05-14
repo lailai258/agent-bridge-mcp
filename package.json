@@ -1,0 +1,57 @@
+{
+  "name": "ai-cli-mcp-server",
+  "version": "0.1.0",
+  "mcpName": "io.github.agent-bridge/ai-cli-mcp-server",
+  "description": "MCP-only server for running local Claude, Codex, Gemini, Forge, and OpenCode CLI agents as background jobs",
+  "license": "MIT",
+  "main": "dist/server.js",
+  "bin": {
+    "ai-cli-mcp": "dist/bin/ai-cli-mcp.js"
+  },
+  "files": [
+    "dist/app",
+    "dist/bin",
+    "dist/cli-builder.js",
+    "dist/cli-utils.js",
+    "dist/model-catalog.js",
+    "dist/parsers.js",
+    "dist/peek.js",
+    "dist/process-result.js",
+    "dist/process-service.js",
+    "dist/server.js",
+    "server.json",
+    "README.md",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "npm run build && vitest run",
+    "test:unit": "npm run build && vitest run --config vitest.config.unit.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.3"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "type": "module",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "codex",
+    "gemini",
+    "forge",
+    "opencode",
+    "background-jobs"
+  ]
+}
