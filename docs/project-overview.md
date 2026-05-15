@@ -8,7 +8,7 @@
 
 `agent-bridge-mcp` 是一个只暴露 MCP server 能力的 Node.js 项目。它不直接调用模型 API，而是通过本机已安装并登录的 Claude、Codex、Gemini、Forge、OpenCode CLI 启动后台任务，并用 MCP tools 提供统一的运行、查询、等待、短窗口观察、终止、清理、诊断和模型发现能力。
 
-项目核心边界是 MCP tool 契约，不是人类交互式 CLI。包内唯一二进制入口是 `ai-cli-mcp`，指向构建产物 `dist/bin/ai-cli-mcp.js`。
+项目核心边界是 MCP tool 契约，不是人类交互式 CLI。包内唯一二进制入口是 `agent-bridge-mcp`，指向构建产物 `dist/bin/agent-bridge-mcp.js`。
 
 ## 项目分类
 

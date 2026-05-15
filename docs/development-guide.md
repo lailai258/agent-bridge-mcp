@@ -40,7 +40,7 @@ npm start
 通过 bin 入口启动：
 
 ```bash
-ai-cli-mcp
+agent-bridge-mcp
 ```
 
 ## MCP 客户端配置
@@ -66,7 +66,7 @@ ai-cli-mcp
 {
   "mcpServers": {
     "agent-bridge-mcp": {
-      "command": "ai-cli-mcp",
+      "command": "agent-bridge-mcp",
       "args": []
     }
   }
@@ -158,7 +158,7 @@ npm_config_cache="/private/tmp/agent-bridge-mcp-npm-cache" npm pack --dry-run
 
 ## 发布注意事项
 
-- `package.json` 的 `bin` 只能暴露 `ai-cli-mcp`。
+- `package.json` 的 `bin` 只能暴露 `agent-bridge-mcp`。
 - `files` 白名单需要包含实际发布入口和必要文档。
 - 发布前建议 dry-run 检查 tarball 内容。
 - 不要把已废弃的人类 CLI 文件重新加入发布清单。

@@ -14,7 +14,7 @@ agent-bridge-mcp/
 │   ├── app/
 │   │   └── mcp.ts                  # MCP server、tool 注册、handler 分发
 │   ├── bin/
-│   │   └── ai-cli-mcp.ts           # 唯一 bin 入口
+│   │   └── agent-bridge-mcp.ts           # 唯一 bin 入口
 │   ├── __tests__/
 │   │   ├── utils/                  # MCP 测试客户端与 mock CLI 工具
 │   │   ├── mcp-contract.test.ts    # stdio MCP 契约测试
@@ -57,8 +57,8 @@ agent-bridge-mcp/
 ### `src/bin/`
 
 **用途：** npm bin 入口。  
-**包含：** `ai-cli-mcp.ts`。  
-**注意：** `package.json` 只能暴露 `ai-cli-mcp`，不要新增 `ai-cli` 或其他人类 CLI。
+**包含：** `agent-bridge-mcp.ts`。  
+**注意：** `package.json` 只能暴露 `agent-bridge-mcp`，不要新增 `ai-cli` 或其他人类 CLI。
 
 ### `src/__tests__/`
 
@@ -80,8 +80,8 @@ agent-bridge-mcp/
 
 - **MCP server 启动入口：** `src/app/mcp.ts` 的 `runMcpServer()`。
 - **包导出入口：** `src/server.ts`。
-- **bin 入口：** `src/bin/ai-cli-mcp.ts`。
-- **构建产物入口：** `dist/server.js` 与 `dist/bin/ai-cli-mcp.js`。
+- **bin 入口：** `src/bin/agent-bridge-mcp.ts`。
+- **构建产物入口：** `dist/server.js` 与 `dist/bin/agent-bridge-mcp.js`。
 
 ## 文件组织模式
 

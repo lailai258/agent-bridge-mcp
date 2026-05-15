@@ -12,12 +12,12 @@
 ## 快速参考
 
 - **技术栈：** Node.js、TypeScript、ESM / NodeNext、MCP SDK、Vitest
-- **入口点：** `src/server.ts`、`src/app/mcp.ts`、`src/bin/ai-cli-mcp.ts`
-- **构建产物：** `dist/server.js`、`dist/bin/ai-cli-mcp.js`
+- **入口点：** `src/server.ts`、`src/app/mcp.ts`、`src/bin/agent-bridge-mcp.ts`
+- **构建产物：** `dist/server.js`、`dist/bin/agent-bridge-mcp.js`
 - **架构模式：** 分层适配器架构
 - **数据库：** 无
 - **部署形态：** stdio MCP server
-- **唯一 bin：** `ai-cli-mcp`
+- **唯一 bin：** `agent-bridge-mcp`
 
 ## 生成文档
 
@@ -125,7 +125,7 @@ npm test
 - `doctor` 只检查二进制路径和可执行性，不检查登录态。
 - `peek` 不能返回原始工具输出或累计 stdout/stderr。
 - 相对源码导入必须保留 `.js` 后缀。
-- `package.json` 只能暴露 `ai-cli-mcp` bin。
+- `package.json` 只能暴露 `agent-bridge-mcp` bin。
 
 ---
 

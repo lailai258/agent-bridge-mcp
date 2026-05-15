@@ -172,7 +172,7 @@ completed/failed -> removed   cleanup_processes 清理
 - `src/cli.ts`
 - `src/cli-parse.ts`
 
-`package.json` 的 `bin` 只暴露 `ai-cli-mcp`。
+`package.json` 的 `bin` 只暴露 `agent-bridge-mcp`。
 
 ## 变更影响指南
 

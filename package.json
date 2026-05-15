@@ -1,12 +1,12 @@
 {
-  "name": "ai-cli-mcp-server",
+  "name": "agent-bridge-mcp-server",
   "version": "0.1.0",
-  "mcpName": "io.github.agent-bridge/ai-cli-mcp-server",
+  "mcpName": "io.github.agent-bridge/agent-bridge-mcp-server",
   "description": "MCP-only server for running local Claude, Codex, Gemini, Forge, and OpenCode CLI agents as background jobs",
   "license": "MIT",
   "main": "dist/server.js",
   "bin": {
-    "ai-cli-mcp": "dist/bin/ai-cli-mcp.js"
+    "agent-bridge-mcp": "dist/bin/agent-bridge-mcp.js"
   },
   "files": [
     "dist/app",

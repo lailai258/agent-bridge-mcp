@@ -13,7 +13,7 @@
 The package has one executable entry point:
 
 ```text
-ai-cli-mcp
+agent-bridge-mcp
 ```
 
 ## Why This Exists
@@ -86,13 +86,13 @@ npm run dev
 If installed from npm, the package name is:
 
 ```bash
-npm install -g ai-cli-mcp-server
+npm install -g agent-bridge-mcp-server
 ```
 
 Then start the stdio server with:
 
 ```bash
-ai-cli-mcp
+agent-bridge-mcp
 ```
 
 ## MCP Client Configuration
@@ -103,7 +103,7 @@ Use the package executable when it is available on `PATH`:
 {
   "mcpServers": {
     "agent-bridge-mcp": {
-      "command": "ai-cli-mcp",
+      "command": "agent-bridge-mcp",
       "args": []
     }
   }
@@ -380,7 +380,7 @@ Values may be simple command names or absolute paths. Relative paths such as `./
 Enable debug logging with:
 
 ```bash
-MCP_CLAUDE_DEBUG=true ai-cli-mcp
+MCP_CLAUDE_DEBUG=true agent-bridge-mcp
 ```
 
 ## Architecture

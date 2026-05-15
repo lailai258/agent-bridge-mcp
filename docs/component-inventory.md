@@ -67,7 +67,7 @@
 - **测试边界：** `if (!process.env.VITEST)` 保护不能删除。
 - **变更风险：** 中。影响导入副作用和测试稳定性。
 
-### `src/bin/ai-cli-mcp.ts`
+### `src/bin/agent-bridge-mcp.ts`
 
 - **职责：** npm bin 入口。
 - **注意：** 应只负责启动 MCP stdio server，不承载业务逻辑。

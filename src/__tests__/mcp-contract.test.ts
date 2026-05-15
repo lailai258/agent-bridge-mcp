@@ -73,7 +73,7 @@ describe('MCP Contract Tests', () => {
 
   beforeEach(async () => {
     await getSharedMock();
-    testDir = mkdtempSync(join(tmpdir(), 'ai-cli-mcp-contract-'));
+    testDir = mkdtempSync(join(tmpdir(), 'agent-bridge-mcp-contract-'));
     client = createTestClient({ debug: false });
     await client.connect();
   });

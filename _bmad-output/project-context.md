@@ -26,7 +26,7 @@ _本文件记录 AI 代理在本项目中实现代码时必须遵守的关键规
 - 构建命令是 `npm run build`，直接执行 `tsc`。
 - 单元测试命令是 `npm run test:unit`，会先构建再运行 `vitest.config.unit.ts`。
 - 完整测试命令是 `npm test`，会先构建再运行默认 Vitest 配置。
-- 包发布入口只有 `ai-cli-mcp -> dist/bin/ai-cli-mcp.js`。
+- 包发布入口只有 `agent-bridge-mcp -> dist/bin/agent-bridge-mcp.js`。
 
 ## Critical Implementation Rules
 
@@ -46,7 +46,7 @@ _本文件记录 AI 代理在本项目中实现代码时必须遵守的关键规
 ### Framework-Specific Rules
 
 - 项目是 MCP-only server；不要新增人类 CLI 子命令、交互式终端 CLI 或文件持久化进程状态服务。
-- `src/bin/ai-cli-mcp.ts` 是唯一二进制入口，只负责启动 MCP stdio server。
+- `src/bin/agent-bridge-mcp.ts` 是唯一二进制入口，只负责启动 MCP stdio server。
 - `src/app/mcp.ts` 是 MCP tool 注册与 handler 分发边界；新增或修改工具时必须同步维护 tool schema、handler、错误映射和文档契约。
 - 当前 MCP tools 必须保持九项：`run`、`list_processes`、`get_result`、`wait`、`peek`、`kill_process`、`cleanup_processes`、`doctor`、`models`。
 - 所有 MCP tool 返回值保持 `content: [{ type: 'text', text: JSON.stringify(..., null, 2) }]` 结构。
@@ -106,7 +106,7 @@ _本文件记录 AI 代理在本项目中实现代码时必须遵守的关键规
 - 不要在 `peek` 返回 tool result 原文、命令 stdout/stderr 或历史累计输出；这会破坏短窗口观察与敏感输出隔离语义。
 - 不要假设所有 CLI 都只从 stdout 输出结构化 JSON；Codex 需要合并 stdout/stderr 解析，OpenCode 失败时需要保留原始输出。
 - 不要删除 `server.ts` 中的 `if (!process.env.VITEST)` 保护；测试依赖它避免导入时自动启动 server。
-- 不要把 `package.json` 增加 `ai-cli` bin；唯一 bin 必须是 `ai-cli-mcp`。
+- 不要把 `package.json` 增加 `ai-cli` bin；唯一 bin 必须是 `agent-bridge-mcp`。
 
 ---
 

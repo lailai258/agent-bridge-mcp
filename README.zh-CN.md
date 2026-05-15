@@ -13,7 +13,7 @@
 包内唯一可执行入口是：
 
 ```text
-ai-cli-mcp
+agent-bridge-mcp
 ```
 
 ## 为什么需要它
@@ -86,24 +86,24 @@ npm run dev
 npm 包名是：
 
 ```bash
-npm install -g ai-cli-mcp-server
+npm install -g agent-bridge-mcp-server
 ```
 
 然后启动 stdio server：
 
 ```bash
-ai-cli-mcp
+agent-bridge-mcp
 ```
 
 ## MCP 客户端配置
 
-如果 `ai-cli-mcp` 在 `PATH` 中：
+如果 `agent-bridge-mcp` 在 `PATH` 中：
 
 ```json
 {
   "mcpServers": {
     "agent-bridge-mcp": {
-      "command": "ai-cli-mcp",
+      "command": "agent-bridge-mcp",
       "args": []
     }
   }
@@ -380,7 +380,7 @@ Gemini CLI 可以在 prompt 中引用图片，例如 `@image.png`。将 `workFol
 启用调试日志：
 
 ```bash
-MCP_CLAUDE_DEBUG=true ai-cli-mcp
+MCP_CLAUDE_DEBUG=true agent-bridge-mcp
 ```
 
 ## 架构
