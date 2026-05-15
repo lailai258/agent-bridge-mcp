@@ -1,4 +1,4 @@
-export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'opus', 'opusplan', 'haiku'] as const;
+export const CLAUDE_MODELS = ['sonnet', 'sonnet[1m]', 'deepseek-v4-pro[1m]', 'opus', 'opusplan', 'haiku'] as const;
 export const CODEX_MODELS = [
   'gpt-5.4',
   'gpt-5.5',

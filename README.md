@@ -276,6 +276,7 @@ Claude:
 
 - `sonnet`
 - `sonnet[1m]`
+- `deepseek-v4-pro[1m]`
 - `opus`
 - `opusplan`
 - `haiku`
