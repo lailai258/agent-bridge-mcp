@@ -1,19 +1,47 @@
 # agent-bridge-mcp
 
-`agent-bridge-mcp` 是一个 MCP-only server。它不直接调用任何模型 API，而是通过 MCP 工具调用本机已经安装并登录的 AI CLI，把每次任务作为后台子进程启动，并用 PID 管理运行状态、输出、等待、终止和清理。
+> MCP-only server for running local Claude, Codex, Gemini, Forge, and OpenCode CLI agents as background jobs.
 
-这个项目只保留 MCP server 能力，包内唯一二进制入口是 `ai-cli-mcp`。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-339933)](./package.json)
+[![MCP](https://img.shields.io/badge/MCP-stdio%20server-blue)](./server.json)
 
-## 解决什么问题
+**English** | [简体中文](./README.zh-CN.md)
 
-当 MCP 客户端需要把代码修改、文件操作、搜索、分析或长时间任务交给本机 AI CLI 执行时，可以通过这个 server：
+`agent-bridge-mcp` lets an MCP client delegate work to AI coding CLIs already installed on your machine. It does not call model APIs directly. Instead, it starts local Claude, Codex, Gemini, Forge, or OpenCode CLI processes in the background, returns a PID immediately, and exposes MCP tools to inspect, wait for, peek at, terminate, and clean up those jobs.
 
-- 启动一个后台 Claude、Codex、Gemini、Forge 或 OpenCode CLI 任务。
-- 立即拿到 PID，不阻塞 MCP 客户端。
-- 后续用 PID 查询状态、等待完成、短窗口观察输出、终止进程或清理已完成记录。
-- 用统一 MCP 工具契约屏蔽不同 CLI 的命令参数差异。
+The package has one executable entry point:
 
-## 支持的 AI CLI
+```text
+ai-cli-mcp
+```
+
+## Why This Exists
+
+Most AI CLIs are excellent at real local work: editing files, running commands, searching code, using project context, and continuing long tasks. MCP clients, however, need a stable tool contract and should not block while a long agent process runs.
+
+This server bridges that gap:
+
+- Start long-running local AI CLI tasks through MCP.
+- Return immediately with a PID instead of waiting for completion.
+- Query compact or verbose results later.
+- Observe short windows of live natural-language output with `peek`.
+- Use one MCP contract across Claude, Codex, Gemini, Forge, and OpenCode.
+- Keep process state simple and in memory for the current server lifecycle.
+
+## What It Is Not
+
+`agent-bridge-mcp` is intentionally narrow:
+
+- It is not a model API gateway.
+- It is not a human-facing terminal CLI suite.
+- It does not provide `ai-cli run`, `ai-cli ps`, or similar subcommands.
+- It does not persist process state across MCP server restarts.
+- It does not verify CLI login state, subscriptions, model access, or terms acceptance.
+
+## Supported Agent CLIs
+
+The server can launch these local tools:
 
 - Claude CLI
 - Codex CLI
@@ -21,36 +49,68 @@
 - Forge CLI
 - OpenCode CLI
 
-本项目只负责调用本机 CLI。使用前需要自行安装、配置并登录对应 CLI，同时完成这些 CLI 自身要求的条款确认。
+You must install, configure, and sign in to the CLIs you plan to use before calling `run`. `doctor` only checks whether binaries can be resolved and executed; it does not check account state.
 
-## 安装
+## Requirements
+
+- Node.js `^20.19.0 || >=22.12.0`
+- npm
+- At least one supported AI CLI installed locally
+- An MCP client that supports stdio servers
+
+## Installation
+
+### From Source
 
 ```bash
+git clone https://github.com/agent-bridge/agent-bridge-mcp.git
+cd agent-bridge-mcp
 npm install
 npm run build
 ```
 
-开发模式：
-
-```bash
-npm run dev
-```
-
-构建后启动：
+Start the built MCP server:
 
 ```bash
 npm start
 ```
 
-也可以通过 bin 入口启动：
+Development mode:
+
+```bash
+npm run dev
+```
+
+### From npm
+
+If installed from npm, the package name is:
+
+```bash
+npm install -g ai-cli-mcp-server
+```
+
+Then start the stdio server with:
 
 ```bash
 ai-cli-mcp
 ```
 
-## MCP 客户端配置
+## MCP Client Configuration
 
-构建后在 MCP 客户端中配置 stdio server：
+Use the package executable when it is available on `PATH`:
+
+```json
+{
+  "mcpServers": {
+    "agent-bridge-mcp": {
+      "command": "ai-cli-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+Or point your MCP client at the built server file:
 
 ```json
 {
@@ -65,78 +125,234 @@ ai-cli-mcp
 }
 ```
 
-如果通过 npm 全局安装或可执行入口可被 PATH 找到：
+MCP registry metadata is available in [server.json](./server.json).
+
+## Quick Example
+
+Call `run` from your MCP client:
 
 ```json
 {
-  "mcpServers": {
-    "agent-bridge-mcp": {
-      "command": "ai-cli-mcp",
-      "args": []
-    }
-  }
+  "model": "codex-ultra",
+  "workFolder": "/absolute/path/to/project",
+  "prompt": "Review this repository and identify the most important test failures."
+}
+```
+
+The server returns immediately:
+
+```json
+{
+  "pid": 12345,
+  "status": "started",
+  "agent": "codex",
+  "message": "codex process started successfully"
+}
+```
+
+Later, inspect the process:
+
+```json
+{
+  "pid": 12345,
+  "verbose": true
+}
+```
+
+Or wait for it:
+
+```json
+{
+  "pids": [12345],
+  "timeout": 300,
+  "verbose": false
 }
 ```
 
 ## MCP Tools
 
-- `run`：启动一个 Claude、Codex、Gemini、Forge 或 OpenCode CLI 后台任务，返回 PID。
-- `list_processes`：列出当前内存中跟踪的运行中和已结束进程。
-- `get_result`：按 PID 获取当前状态和输出，支持 `verbose`。
-- `wait`：等待一个或多个 PID 完成，支持超时和 `verbose`。
-- `peek`：在短时间窗口中观察进程新输出的自然语言消息，可选包含规范化工具调用事件。
-- `kill_process`：终止运行中的进程。
-- `cleanup_processes`：清理已完成或失败的进程记录。
-- `doctor`：检查受支持 CLI 的二进制可用性和路径解析状态。
-- `models`：列出支持的模型、别名和 OpenCode 动态模型格式。
+All tool responses are returned as MCP text content containing pretty-printed JSON.
 
-## 指定模型
+### `run`
 
-`run` 的 `model` 参数支持这些别名：
+Starts a new local AI CLI child process in the background and returns a PID immediately.
 
-- `claude-ultra`：映射到 Claude `opus`，默认 `reasoning_effort=max`。
-- `codex-ultra`：映射到 Codex `gpt-5.5`，默认 `reasoning_effort=xhigh`。
-- `gemini-ultra`：映射到 Gemini `gemini-3.1-pro-preview`。
+Required:
 
-标准模型包括：
+- `workFolder`: absolute working directory for the agent process.
 
-- Claude：`sonnet`、`sonnet[1m]`、`opus`、`opusplan`、`haiku`
-- Codex：`gpt-5.4`、`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex`、`gpt-5.3-codex-spark`、`gpt-5.2`
-- Gemini：`gemini-2.5-pro`、`gemini-2.5-flash`、`gemini-3.1-pro-preview`、`gemini-3-pro-preview`、`gemini-3-flash-preview`
-- Forge：`forge`
-- OpenCode：`opencode`
+Prompt input, exactly one required:
 
-OpenCode 支持动态模型写法：
+- `prompt`: inline task prompt.
+- `prompt_file`: absolute path or path relative to `workFolder`.
 
-```text
-oc-<provider/model>
-```
+Optional:
 
-例如：
+- `model`: standard model, alias, or OpenCode dynamic model.
+- `reasoning_effort`: supported only for Claude and Codex.
+- `session_id`: resume an existing CLI session where the selected CLI supports it.
+
+### `list_processes`
+
+Lists tracked processes in the current server memory:
+
+- `pid`
+- `agent`
+- `status`
+
+Statuses are `running`, `completed`, or `failed`.
+
+### `get_result`
+
+Returns the current status and output for one PID.
+
+Parameters:
+
+- `pid`: PID returned by `run`.
+- `verbose`: include metadata such as `startTime`, `workFolder`, `prompt`, and fuller parsed output.
+
+### `wait`
+
+Waits for one or more tracked processes to finish.
+
+Parameters:
+
+- `pids`: non-empty PID array.
+- `timeout`: seconds, default `180`.
+- `verbose`: return verbose result objects.
+
+### `peek`
+
+Observes a short live output window for running processes.
+
+Parameters:
+
+- `pids`: PID array. Duplicates are removed while preserving first-seen order.
+- `peek_time_sec`: positive integer, default `10`, maximum `60`.
+- `include_tool_calls`: include normalized tool-call events without raw tool output.
+
+Important boundaries:
+
+- `peek` is not a history API.
+- `peek` is not a gapless stream.
+- `peek` is not stdout/stderr tailing.
+- Tool calls are summarized; raw tool output is excluded.
+
+### `kill_process`
+
+Sends `SIGTERM` to a running process by PID.
+
+### `cleanup_processes`
+
+Removes completed and failed process records from the server's in-memory process table.
+
+### `doctor`
+
+Reports binary path resolution for supported CLIs:
+
+- configured command
+- resolved path
+- availability
+- lookup source
+- configuration errors
+
+It does not verify login state, terms acceptance, model permissions, or network connectivity.
+
+### `models`
+
+Lists supported model names, aliases, and OpenCode dynamic model syntax.
+
+## Models
+
+### Aliases
+
+- `claude-ultra` -> Claude `opus`, with default `reasoning_effort=max`
+- `codex-ultra` -> Codex `gpt-5.5`, with default `reasoning_effort=xhigh`
+- `gemini-ultra` -> Gemini `gemini-3.1-pro-preview`
+
+### Standard Models
+
+Claude:
+
+- `sonnet`
+- `sonnet[1m]`
+- `opus`
+- `opusplan`
+- `haiku`
+
+Codex:
+
+- `gpt-5.4`
+- `gpt-5.5`
+- `gpt-5.4-mini`
+- `gpt-5.3-codex`
+- `gpt-5.3-codex-spark`
+- `gpt-5.2`
+
+Gemini:
+
+- `gemini-2.5-pro`
+- `gemini-2.5-flash`
+- `gemini-3.1-pro-preview`
+- `gemini-3-pro-preview`
+- `gemini-3-flash-preview`
+
+Forge:
+
+- `forge`
+
+OpenCode:
+
+- `opencode`
+- `oc-<provider/model>`
+
+Example dynamic OpenCode model:
 
 ```json
 {
   "model": "oc-openai/gpt-5.4",
-  "prompt": "检查这个项目的测试失败原因",
-  "workFolder": "/absolute/path/to/project"
+  "workFolder": "/absolute/path/to/project",
+  "prompt": "Find the highest-risk regression in this branch."
 }
 ```
 
-`reasoning_effort` 只支持 Claude 和 Codex。Claude 支持 `low`、`medium`、`high`、`xhigh`、`max`；Codex 支持 `low`、`medium`、`high`、`xhigh`。
+## Reasoning Effort
 
-## Gemini CLI 读图
+`reasoning_effort` is intentionally limited by agent family:
 
-Gemini CLI 支持在 prompt 中用 `@image.png` 引用图片。通过 MCP `run` 调用时，把 `workFolder` 指向图片所在目录，或在 prompt 中使用可解析的相对路径：
+- Claude: `low`, `medium`, `high`, `xhigh`, `max`
+- Codex: `low`, `medium`, `high`, `xhigh`
+- Gemini: not supported
+- Forge: not supported
+- OpenCode: not supported
+
+Invalid combinations are rejected before launching the child process.
+
+## Session Resume
+
+The optional `session_id` parameter is passed to the selected CLI using that CLI's native resume mechanism:
+
+- Claude: resume with forked session behavior.
+- Codex: `exec resume <session_id>`.
+- Gemini: resume flag.
+- Forge: conversation ID.
+- OpenCode: `--session`.
+
+Session behavior still depends on the installed CLI version and its own storage model.
+
+## Gemini Image Prompts
+
+Gemini CLI can reference images from the prompt, for example `@image.png`. Set `workFolder` to the directory containing the image, or use a path Gemini can resolve:
 
 ```json
 {
   "model": "gemini-2.5-pro",
   "workFolder": "/absolute/path/to/assets",
-  "prompt": "请分析 @image.png 中的界面层级和可读性问题"
+  "prompt": "Analyze @image.png and report the UI hierarchy issues."
 }
 ```
 
-也可以把 prompt 写入文件，再用 `prompt_file`：
+You can also keep a larger prompt in a file:
 
 ```json
 {
@@ -146,9 +362,11 @@ Gemini CLI 支持在 prompt 中用 `@image.png` 引用图片。通过 MCP `run` 
 }
 ```
 
-## CLI 路径配置
+## CLI Path Configuration
 
-默认会在本机 PATH 或常见本地安装路径中查找 CLI。需要覆盖命令名或绝对路径时，可以设置环境变量：
+By default, the server resolves CLIs from common local install paths and `PATH`.
+
+Override a CLI command or absolute path with environment variables:
 
 - `CLAUDE_CLI_NAME`
 - `CODEX_CLI_NAME`
@@ -156,12 +374,101 @@ Gemini CLI 支持在 prompt 中用 `@image.png` 引用图片。通过 MCP `run` 
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
 
-这些变量可以是简单命令名，也可以是绝对路径。不支持相对路径。
+Values may be simple command names or absolute paths. Relative paths such as `./claude` or `tools/codex` are rejected.
 
-## 注意事项
+Enable debug logging with:
 
-- 进程状态只保存在 MCP server 当前内存中；server 重启后不会恢复旧 PID。
-- 每次 `run` 都会启动新的后台子进程。
-- `get_result`、`wait`、`peek`、`kill_process`、`cleanup_processes` 都基于 MCP server 内存中的 PID 管理。
-- 本项目不包含人类 CLI 子命令，不提供 `ai-cli run/ps/result/wait/kill/cleanup/doctor/models/mcp`。
-- 外部 CLI 的登录态、模型权限、网络访问和沙箱行为由对应 CLI 自身决定。
+```bash
+MCP_CLAUDE_DEBUG=true ai-cli-mcp
+```
+
+## Architecture
+
+```text
+MCP Client
+  ↓ stdio / tools.call
+MCP Server Boundary        src/app/mcp.ts
+  ↓
+Runtime Process Layer      src/process-service.ts
+  ↓
+CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
+  ↓
+Local AI CLI Processes     claude / codex / gemini / forge / opencode
+```
+
+Core modules:
+
+- [src/app/mcp.ts](./src/app/mcp.ts): MCP server, tool registration, handler dispatch, error mapping.
+- [src/process-service.ts](./src/process-service.ts): in-memory process lifecycle management.
+- [src/cli-builder.ts](./src/cli-builder.ts): converts `run` input into safe CLI argument arrays.
+- [src/cli-utils.ts](./src/cli-utils.ts): CLI path resolution and doctor status.
+- [src/model-catalog.ts](./src/model-catalog.ts): model lists, aliases, and OpenCode dynamic model metadata.
+- [src/parsers.ts](./src/parsers.ts): output parsers and peek event extraction.
+- [src/process-result.ts](./src/process-result.ts): compact and verbose result shaping.
+- [src/peek.ts](./src/peek.ts): peek validation and response helpers.
+
+## Runtime State
+
+Process records live only in the current Node.js server process.
+
+Consequences:
+
+- A PID returned by `run` is only valid while the same MCP server process is alive.
+- Restarting the MCP server loses all tracked process records.
+- `cleanup_processes` only removes records from memory; it does not delete files.
+- Each `run` call starts a new child process.
+
+## Security Notes
+
+- Child processes are spawned with argument arrays rather than shell-concatenated prompt strings.
+- Custom CLI environment variables reject relative paths.
+- `peek` excludes raw tool output and raw command output.
+- Verbose results include the prompt, so avoid sending secrets in prompts.
+- External CLI sandboxing, network access, file permissions, and approval behavior are controlled by the selected CLI, not by this server.
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Build:
+
+```bash
+npm run build
+```
+
+Run unit tests:
+
+```bash
+npm run test:unit
+```
+
+Run the full test suite:
+
+```bash
+npm test
+```
+
+Check package contents before publishing:
+
+```bash
+npm_config_cache="/private/tmp/agent-bridge-mcp-npm-cache" npm pack --dry-run
+```
+
+## Documentation
+
+Additional project documentation:
+
+- [docs/index.md](./docs/index.md)
+- [docs/architecture.md](./docs/architecture.md)
+- [docs/mcp-tool-contracts.md](./docs/mcp-tool-contracts.md)
+- [docs/api-contracts.md](./docs/api-contracts.md)
+- [docs/development-guide.md](./docs/development-guide.md)
+- [docs/data-models.md](./docs/data-models.md)
+
+## License
+
+MIT. See [LICENSE](./LICENSE).

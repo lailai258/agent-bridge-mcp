@@ -21,6 +21,7 @@
     "dist/server.js",
     "server.json",
     "README.md",
+    "README.zh-CN.md",
     "docs"
   ],
   "scripts": {
