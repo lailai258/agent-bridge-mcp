@@ -171,6 +171,7 @@ describe('MCP Contract Tests', () => {
     );
     expect(modelsData.claude).toContain('sonnet');
     expect(modelsData.claude).toContain('deepseek-v4-pro[1m]');
+    expect(modelsData.claude).toContain('deepseek-v4-flash[1m]');
     expect(modelsData.claude).toContain('glm-5.1');
     expect(modelsData.codex).toEqual([
       'gpt-5.4',

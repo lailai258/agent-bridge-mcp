@@ -2,6 +2,7 @@ export const CLAUDE_MODELS = [
   'sonnet',
   'sonnet[1m]',
   'deepseek-v4-pro[1m]',
+  'deepseek-v4-flash[1m]',
   'glm-5.1',
   'opus',
   'opusplan',
