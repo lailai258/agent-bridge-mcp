@@ -241,6 +241,21 @@ describe('cli-builder', () => {
         expect(cmd.resolvedModel).toBe('deepseek-v4-pro[1m]');
       });
 
+      it('should pass glm-5.1 through to claude code', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'glm-5.1',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('claude');
+        expect(cmd.cliPath).toBe('/usr/bin/claude');
+        expect(cmd.args).toContain('--model');
+        expect(cmd.args).toContain('glm-5.1');
+        expect(cmd.resolvedModel).toBe('glm-5.1');
+      });
+
       it('should build claude command with session_id', () => {
         const cmd = buildCliCommand({
           prompt: 'test',
