@@ -116,9 +116,10 @@ describe('MCP Contract Tests', () => {
     expect(runTool.description).toContain('OpenCode');
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
+    expect(runTool.inputSchema.properties.model.description).toContain('oc-opencode-go/deepseek-v4-pro');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
-      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.'
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection.'
     );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');
@@ -698,6 +699,35 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     expect(openCodeInvocations[3]).toContain(`--dir ${testDir}`);
     expect(openCodeInvocations[3]).toContain('--model openai/gpt-5.4');
+
+    const deepSeekRunResponse = await client.callTool('run', {
+      prompt: 'opencode-deepseek-provider-model',
+      workFolder: testDir,
+      model: 'oc-opencode-go/deepseek-v4-pro',
+    });
+    const deepSeekRunData = parseToolJson(deepSeekRunResponse);
+
+    const deepSeekWaitData = parseToolJson(await client.callTool('wait', { pids: [deepSeekRunData.pid], timeout: 5 }));
+    expect(deepSeekWaitData).toHaveLength(1);
+    expect(deepSeekWaitData[0]).toMatchObject({
+      pid: deepSeekRunData.pid,
+      agent: 'opencode',
+      status: 'completed',
+      exitCode: 0,
+      model: 'oc-opencode-go/deepseek-v4-pro',
+      session_id: 'ses-opencode-contract',
+      agentOutput: {
+        message: 'Model opencode-go/deepseek-v4-pro: opencode-deepseek-provider-model',
+        session_id: 'ses-opencode-contract',
+        tokens: { total: 11833 },
+        cost: 0,
+      },
+    });
+
+    const updatedOpenCodeInvocations = readFileSync(opencodeArgsLogPath, 'utf-8').trim().split('\n');
+    expect(updatedOpenCodeInvocations).toHaveLength(5);
+    expect(updatedOpenCodeInvocations[4]).toContain(`--dir ${testDir}`);
+    expect(updatedOpenCodeInvocations[4]).toContain('--model opencode-go/deepseek-v4-pro');
 
     await expect(
       client.callTool('run', {

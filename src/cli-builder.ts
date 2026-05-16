@@ -6,7 +6,7 @@ import { MODEL_ALIASES } from './model-catalog.js';
 export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
-const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>.';
+const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.';
 
 type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
 

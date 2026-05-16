@@ -319,6 +319,16 @@ Example dynamic OpenCode model:
 }
 ```
 
+Example OpenCode DeepSeek v4 Pro model:
+
+```json
+{
+  "model": "oc-opencode-go/deepseek-v4-pro",
+  "workFolder": "/absolute/path/to/project",
+  "prompt": "Find the highest-risk regression in this branch."
+}
+```
+
 ## Reasoning Effort
 
 `reasoning_effort` is intentionally limited by agent family:

@@ -115,6 +115,9 @@ describe('cli-builder', () => {
       expect(() => getReasoningEffort('oc-openai/gpt-5.4', 'high')).toThrow(
         'reasoning_effort is not supported for opencode.'
       );
+      expect(() => getReasoningEffort('oc-opencode-go/deepseek-v4-pro', 'high')).toThrow(
+        'reasoning_effort is not supported for opencode.'
+      );
     });
   });
 
@@ -577,6 +580,28 @@ describe('cli-builder', () => {
         ]);
       });
 
+      it('should route explicit OpenCode DeepSeek provider model syntax', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'oc-opencode-go/deepseek-v4-pro',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('opencode');
+        expect(cmd.resolvedModel).toBe('oc-opencode-go/deepseek-v4-pro');
+        expect(cmd.args).toEqual([
+          'run',
+          '--format',
+          'json',
+          '--dir',
+          '/tmp',
+          '--model',
+          'opencode-go/deepseek-v4-pro',
+          'test',
+        ]);
+      });
+
       it.each([
         'oc-',
         'oc-openai',
@@ -590,7 +615,7 @@ describe('cli-builder', () => {
             model,
             cliPaths: DEFAULT_CLI_PATHS,
           })
-        ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+        ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.');
       });
 
       it.each([' oc-openai/gpt-5.4', 'oc-openai/gpt-5.4 '])(
@@ -603,7 +628,7 @@ describe('cli-builder', () => {
               model,
               cliPaths: DEFAULT_CLI_PATHS,
             })
-          ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+          ).toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.');
         }
       );
 

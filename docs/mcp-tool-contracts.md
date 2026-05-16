@@ -243,6 +243,7 @@ oc-<provider/model>
 示例：
 
 ```text
+oc-opencode-go/deepseek-v4-pro
 oc-openai/gpt-5.4
 ```
 

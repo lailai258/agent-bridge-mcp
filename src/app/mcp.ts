@@ -190,7 +190,7 @@ ${getSupportedModelsDescription()}
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit oc-<provider/model> selection.',
+                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection.',
               },
             },
             required: ['workFolder'],

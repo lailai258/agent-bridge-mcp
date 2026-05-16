@@ -344,7 +344,7 @@ describe('Argument Validation Tests', () => {
             }
           }
         })
-      ).rejects.toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>.');
+      ).rejects.toThrow('Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.');
     });
 
     it('should reject reasoning_effort for OpenCode runtime requests', async () => {

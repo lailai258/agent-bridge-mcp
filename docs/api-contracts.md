@@ -56,7 +56,7 @@
 - `prompt` 与 `prompt_file` 必须且只能提供一个。
 - `prompt_file` 可以是绝对路径，也可以相对 `workFolder`。
 - `reasoning_effort` 只支持 Claude 和 Codex。
-- OpenCode 动态模型必须使用精确格式 `oc-<provider/model>`。
+- OpenCode 动态模型必须使用精确格式 `oc-<provider/model>`，例如 `oc-opencode-go/deepseek-v4-pro`。
 
 ### 输出
 

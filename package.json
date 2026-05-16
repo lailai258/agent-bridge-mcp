@@ -1,6 +1,6 @@
 {
   "name": "agent-bridge-mcp-server",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "mcpName": "io.github.agent-bridge/agent-bridge-mcp-server",
   "description": "MCP-only server for running local Claude, Codex, Gemini, Forge, and OpenCode CLI agents as background jobs",
   "license": "MIT",

@@ -319,6 +319,16 @@ OpenCode 动态模型示例：
 }
 ```
 
+OpenCode DeepSeek v4 Pro 示例：
+
+```json
+{
+  "model": "oc-opencode-go/deepseek-v4-pro",
+  "workFolder": "/absolute/path/to/project",
+  "prompt": "Find the highest-risk regression in this branch."
+}
+```
+
 ## Reasoning Effort
 
 `reasoning_effort` 按 agent 家族限制：
