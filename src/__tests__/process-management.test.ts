@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { EventEmitter } from 'node:events';
 
 // Mock dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  appendFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 vi.mock('node:os');
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js');
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
@@ -40,6 +46,10 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
 const mockExistsSync = vi.mocked(existsSync);
 const mockSpawn = vi.mocked(spawn);
 const mockHomedir = vi.mocked(homedir);
+const mockReadFileSync = vi.mocked(readFileSync);
+const mockWriteFileSync = vi.mocked(writeFileSync);
+const mockAppendFileSync = vi.mocked(appendFileSync);
+const mockMkdirSync = vi.mocked(mkdirSync);
 
 describe('Process Management Tests', () => {
   let consoleErrorSpy: any;
@@ -58,6 +68,7 @@ describe('Process Management Tests', () => {
     // Set up default mocks
     mockHomedir.mockReturnValue('/home/user');
     mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, processes: [] }));
   });
 
   afterEach(() => {

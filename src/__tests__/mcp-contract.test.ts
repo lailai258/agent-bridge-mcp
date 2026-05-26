@@ -20,6 +20,16 @@ function expectProcessSummaryShape(processInfo: any): void {
   });
 }
 
+function expectCompletedWaitResponse(waitData: any): any {
+  expect(waitData).toMatchObject({
+    timed_out: false,
+    timeout: expect.any(Number),
+    results: expect.any(Array),
+  });
+  expect(waitData.results).toHaveLength(1);
+  return waitData.results[0];
+}
+
 function createForgeMockScript(dir: string, argsLogPath: string): string {
   const scriptPath = join(dir, 'mock-forge');
   writeFileSync(
@@ -132,6 +142,7 @@ describe('MCP Contract Tests', () => {
     const waitTool = tools.find((tool: any) => tool.name === 'wait');
     expect(waitTool.inputSchema.required).toEqual(['pids']);
     expect(Object.keys(waitTool.inputSchema.properties).sort()).toEqual([
+      'on_timeout',
       'pids',
       'timeout',
       'verbose',
@@ -236,10 +247,9 @@ describe('MCP Contract Tests', () => {
 
     const waitResponse = await client.callTool('wait', { pids: [runData.pid], timeout: 5 });
     const waitData = parseToolJson(waitResponse);
+    const waitResult = expectCompletedWaitResponse(waitData);
 
-    expect(Array.isArray(waitData)).toBe(true);
-    expect(waitData).toHaveLength(1);
-    expect(waitData[0]).toMatchObject({
+    expect(waitResult).toMatchObject({
       pid: runData.pid,
       agent: 'claude',
       status: 'completed',
@@ -248,9 +258,9 @@ describe('MCP Contract Tests', () => {
       stdout: expect.any(String),
       stderr: expect.any(String),
     });
-    expect(waitData[0]).not.toHaveProperty('startTime');
-    expect(waitData[0]).not.toHaveProperty('workFolder');
-    expect(waitData[0]).not.toHaveProperty('prompt');
+    expect(waitResult).not.toHaveProperty('startTime');
+    expect(waitResult).not.toHaveProperty('workFolder');
+    expect(waitResult).not.toHaveProperty('prompt');
 
     const cleanupResponse = await client.callTool('cleanup_processes', {});
     const cleanupData = parseToolJson(cleanupResponse);
@@ -283,9 +293,9 @@ describe('MCP Contract Tests', () => {
 
     const waitResponse = await client.callTool('wait', { pids: [runData.pid], timeout: 5 });
     const waitData = parseToolJson(waitResponse);
+    const waitResult = expectCompletedWaitResponse(waitData);
 
-    expect(waitData).toHaveLength(1);
-    expect(waitData[0]).toMatchObject({
+    expect(waitResult).toMatchObject({
       pid: runData.pid,
       agent: 'claude',
       status: 'completed',
@@ -294,9 +304,63 @@ describe('MCP Contract Tests', () => {
       stdout: expect.stringContaining('Created file successfully'),
       stderr: '',
     });
-    expect(waitData[0]).not.toHaveProperty('prompt');
-    expect(waitData[0]).not.toHaveProperty('workFolder');
-    expect(waitData[0]).not.toHaveProperty('startTime');
+    expect(waitResult).not.toHaveProperty('prompt');
+    expect(waitResult).not.toHaveProperty('workFolder');
+    expect(waitResult).not.toHaveProperty('startTime');
+  });
+
+  it('restores completed process results from the persisted registry after server restart', async () => {
+    const registryDir = join(testDir, 'agent-registry');
+
+    await client.disconnect();
+    client = createTestClient({
+      debug: false,
+      env: {
+        AGENT_BRIDGE_PROCESS_REGISTRY_DIR: registryDir,
+      },
+    });
+    await client.connect();
+
+    const runData = parseToolJson(await client.callTool('run', {
+      prompt: 'persisted-contract-run',
+      workFolder: testDir,
+      model: 'haiku',
+    }));
+
+    const waitData = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5 }));
+    expect(expectCompletedWaitResponse(waitData).status).toBe('completed');
+
+    await client.disconnect();
+    client = createTestClient({
+      debug: false,
+      env: {
+        AGENT_BRIDGE_PROCESS_REGISTRY_DIR: registryDir,
+      },
+    });
+    await client.connect();
+
+    const listData = parseToolJson(await client.callTool('list_processes', {}));
+    expect(listData).toEqual(expect.arrayContaining([
+      {
+        pid: runData.pid,
+        agent: 'claude',
+        status: 'completed',
+      },
+    ]));
+
+    const restoredResult = parseToolJson(await client.callTool('get_result', { pid: runData.pid, verbose: true }));
+    expect(restoredResult).toMatchObject({
+      pid: runData.pid,
+      agent: 'claude',
+      status: 'completed',
+      exitCode: 0,
+      model: 'haiku',
+      workFolder: testDir,
+      prompt: 'persisted-contract-run',
+      stdout: expect.any(String),
+      stderr: '',
+    });
+    expect(restoredResult.stdout).toContain('Command executed successfully');
   });
 
   it('returns compact results by default and full results when verbose is true for parsed output', async () => {
@@ -324,8 +388,7 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
     const runData = parseToolJson(runResponse);
 
     const completedWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5 }));
-    expect(completedWait).toHaveLength(1);
-    expect(completedWait[0].status).toBe('completed');
+    expect(expectCompletedWaitResponse(completedWait).status).toBe('completed');
 
     const compactResult = parseToolJson(await client.callTool('get_result', { pid: runData.pid }));
     expect(compactResult).toMatchObject({
@@ -370,8 +433,8 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
     });
 
     const compactWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5 }));
-    expect(compactWait).toHaveLength(1);
-    expect(compactWait[0]).toMatchObject({
+    const compactWaitResult = expectCompletedWaitResponse(compactWait);
+    expect(compactWaitResult).toMatchObject({
       pid: runData.pid,
       agent: 'claude',
       status: 'completed',
@@ -383,14 +446,14 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
         session_id: 'session-verbose-1',
       },
     });
-    expect(compactWait[0]).not.toHaveProperty('startTime');
-    expect(compactWait[0]).not.toHaveProperty('workFolder');
-    expect(compactWait[0]).not.toHaveProperty('prompt');
-    expect(compactWait[0].agentOutput).not.toHaveProperty('tools');
+    expect(compactWaitResult).not.toHaveProperty('startTime');
+    expect(compactWaitResult).not.toHaveProperty('workFolder');
+    expect(compactWaitResult).not.toHaveProperty('prompt');
+    expect(compactWaitResult.agentOutput).not.toHaveProperty('tools');
 
     const verboseWait = parseToolJson(await client.callTool('wait', { pids: [runData.pid], timeout: 5, verbose: true }));
-    expect(verboseWait).toHaveLength(1);
-    expect(verboseWait[0]).toMatchObject({
+    const verboseWaitResult = expectCompletedWaitResponse(verboseWait);
+    expect(verboseWaitResult).toMatchObject({
       pid: runData.pid,
       agent: 'claude',
       status: 'completed',
@@ -444,9 +507,9 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     const initialWaitResponse = await client.callTool('wait', { pids: [initialRunData.pid], timeout: 5 });
     const initialWaitData = parseToolJson(initialWaitResponse);
+    const initialWaitResult = expectCompletedWaitResponse(initialWaitData);
 
-    expect(initialWaitData).toHaveLength(1);
-    expect(initialWaitData[0]).toMatchObject({
+    expect(initialWaitResult).toMatchObject({
       pid: initialRunData.pid,
       agent: 'forge',
       status: 'completed',
@@ -488,9 +551,9 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     const resumedWaitResponse = await client.callTool('wait', { pids: [resumedRunData.pid], timeout: 5 });
     const resumedWaitData = parseToolJson(resumedWaitResponse);
+    const resumedWaitResult = expectCompletedWaitResponse(resumedWaitData);
 
-    expect(resumedWaitData).toHaveLength(1);
-    expect(resumedWaitData[0]).toMatchObject({
+    expect(resumedWaitResult).toMatchObject({
       pid: resumedRunData.pid,
       agent: 'forge',
       status: 'completed',
@@ -572,9 +635,9 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     const initialWaitResponse = await client.callTool('wait', { pids: [initialRunData.pid], timeout: 5 });
     const initialWaitData = parseToolJson(initialWaitResponse);
+    const initialWaitResult = expectCompletedWaitResponse(initialWaitData);
 
-    expect(initialWaitData).toHaveLength(1);
-    expect(initialWaitData[0]).toMatchObject({
+    expect(initialWaitResult).toMatchObject({
       pid: initialRunData.pid,
       agent: 'opencode',
       status: 'completed',
@@ -599,9 +662,9 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     const resumedDefaultWaitResponse = await client.callTool('wait', { pids: [resumedDefaultRunData.pid], timeout: 5 });
     const resumedDefaultWaitData = parseToolJson(resumedDefaultWaitResponse);
+    const resumedDefaultWaitResult = expectCompletedWaitResponse(resumedDefaultWaitData);
 
-    expect(resumedDefaultWaitData).toHaveLength(1);
-    expect(resumedDefaultWaitData[0]).toMatchObject({
+    expect(resumedDefaultWaitResult).toMatchObject({
       pid: resumedDefaultRunData.pid,
       agent: 'opencode',
       status: 'completed',
@@ -626,9 +689,9 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
 
     const resumedExplicitWaitResponse = await client.callTool('wait', { pids: [resumedExplicitRunData.pid], timeout: 5 });
     const resumedExplicitWaitData = parseToolJson(resumedExplicitWaitResponse);
+    const resumedExplicitWaitResult = expectCompletedWaitResponse(resumedExplicitWaitData);
 
-    expect(resumedExplicitWaitData).toHaveLength(1);
-    expect(resumedExplicitWaitData[0]).toMatchObject({
+    expect(resumedExplicitWaitResult).toMatchObject({
       pid: resumedExplicitRunData.pid,
       agent: 'opencode',
       status: 'completed',
@@ -651,8 +714,8 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
     const failedRunData = parseToolJson(failedRunResponse);
 
     const compactFailedWait = parseToolJson(await client.callTool('wait', { pids: [failedRunData.pid], timeout: 5 }));
-    expect(compactFailedWait).toHaveLength(1);
-    expect(compactFailedWait[0]).toMatchObject({
+    const compactFailedWaitResult = expectCompletedWaitResponse(compactFailedWait);
+    expect(compactFailedWaitResult).toMatchObject({
       pid: failedRunData.pid,
       agent: 'opencode',
       status: 'failed',
@@ -662,7 +725,7 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
       stdout: expect.stringContaining('Partial failure output'),
       stderr: expect.stringContaining('OpenCode failed for openai/gpt-5.4'),
     });
-    expect(compactFailedWait[0]).not.toHaveProperty('agentOutput');
+    expect(compactFailedWaitResult).not.toHaveProperty('agentOutput');
 
     const verboseFailedResult = parseToolJson(await client.callTool('get_result', { pid: failedRunData.pid, verbose: true }));
     expect(verboseFailedResult).toMatchObject({
@@ -708,8 +771,8 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
     const deepSeekRunData = parseToolJson(deepSeekRunResponse);
 
     const deepSeekWaitData = parseToolJson(await client.callTool('wait', { pids: [deepSeekRunData.pid], timeout: 5 }));
-    expect(deepSeekWaitData).toHaveLength(1);
-    expect(deepSeekWaitData[0]).toMatchObject({
+    const deepSeekWaitResult = expectCompletedWaitResponse(deepSeekWaitData);
+    expect(deepSeekWaitResult).toMatchObject({
       pid: deepSeekRunData.pid,
       agent: 'opencode',
       status: 'completed',

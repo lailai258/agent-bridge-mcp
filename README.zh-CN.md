@@ -27,7 +27,7 @@ agent-bridge-mcp
 - 后续按需查询 compact 或 verbose 结果。
 - 使用 `peek` 观察短时间窗口内的实时自然语言输出。
 - 用同一套 MCP 契约屏蔽 Claude、Codex、Gemini、Forge、OpenCode 的参数差异。
-- 进程状态只保存在当前 server 内存中，语义简单清晰。
+- 运行中的进程句柄保存在当前 server 内存中，同时持久化轻量进程元数据和日志路径，支持 server 重启后恢复查询。
 
 ## 它不是什么
 
@@ -36,7 +36,7 @@ agent-bridge-mcp
 - 它不是模型 API 网关。
 - 它不是面向人类使用的终端 CLI 套件。
 - 它不提供 `ai-cli run`、`ai-cli ps` 等子命令。
-- 它不会在 MCP server 重启后恢复旧进程状态。
+- 它不会重新附加到重启前的实时 stdout/stderr 流，但会通过本地注册表恢复已记录 PID 的基础状态和日志内容。
 - 它不会验证 CLI 登录态、订阅状态、模型权限或条款接受状态。
 
 ## 支持的 Agent CLI
@@ -165,6 +165,7 @@ server 会立即返回：
 {
   "pids": [12345],
   "timeout": 300,
+  "on_timeout": "return_status",
   "verbose": false
 }
 ```
@@ -194,7 +195,7 @@ server 会立即返回：
 
 ### `list_processes`
 
-列出当前 server 内存中跟踪的进程：
+列出当前 server 内存和持久化进程注册表中跟踪的进程：
 
 - `pid`
 - `agent`
@@ -218,8 +219,11 @@ server 会立即返回：
 参数：
 
 - `pids`：非空 PID 数组。
-- `timeout`：秒级超时时间，默认 `180`。
+- `timeout`：逻辑等待预算，单位秒。默认 `900`，可通过 `AGENT_BRIDGE_WAIT_TIMEOUT_SEC` 调整。
+- `on_timeout`：默认 `return_status`，单次观察窗口结束时返回当前 running 结果；只有需要保留旧超时错误行为时才使用 `throw`。
 - `verbose`：返回 verbose 结果对象。
+
+单次 MCP tool call 最多观察 `AGENT_BRIDGE_WAIT_CALL_WINDOW_SEC` 秒，默认 `90`，上限 `110`，避免撞上宿主 `tools/call` 超时；后台子进程会继续运行。
 
 ### `peek`
 
@@ -244,7 +248,7 @@ server 会立即返回：
 
 ### `cleanup_processes`
 
-从 server 内存进程表中移除已完成和失败的进程记录。
+从 server 内存进程表和持久化注册表中移除已完成和失败的进程记录。日志文件会保留在磁盘上，便于排障。
 
 ### `doctor`
 
@@ -412,7 +416,8 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 核心模块：
 
 - [src/app/mcp.ts](./src/app/mcp.ts)：MCP server、tool 注册、handler 分发和错误映射。
-- [src/process-service.ts](./src/process-service.ts)：内存态进程生命周期管理。
+- [src/process-service.ts](./src/process-service.ts)：进程生命周期管理、wait/peek/kill 编排和注册表集成。
+- [src/process-registry.ts](./src/process-registry.ts)：持久化进程元数据和 stdout/stderr 日志路径。
 - [src/cli-builder.ts](./src/cli-builder.ts)：把 `run` 输入转换为安全的 CLI 参数数组。
 - [src/cli-utils.ts](./src/cli-utils.ts)：CLI 路径解析和 doctor 状态。
 - [src/model-catalog.ts](./src/model-catalog.ts)：模型列表、别名和 OpenCode 动态模型元数据。
@@ -422,13 +427,13 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 
 ## 运行时状态
 
-进程记录只存在于当前 Node.js server 进程内存中。
+运行中的子进程句柄只存在于当前 Node.js server 进程内存中；进程元数据和 stdout/stderr 日志路径会写入注册表，默认目录为 `~/.agent-bridge-mcp`，可通过 `AGENT_BRIDGE_PROCESS_REGISTRY_DIR` 覆盖。
 
 这意味着：
 
-- `run` 返回的 PID 只在同一个 MCP server 进程存活期间有效。
-- 重启 MCP server 后，旧进程记录会丢失。
-- `cleanup_processes` 只删除内存记录，不删除文件。
+- `run` 返回的 PID 在同一个 MCP server 进程内可实时观察。
+- 重启 MCP server 后，无法重新附加实时输出流，但可恢复已记录 PID 的基础结果和日志内容。
+- `cleanup_processes` 删除内存记录和持久化注册表记录，不删除日志文件。
 - 每次 `run` 都会启动新的子进程。
 
 ## 安全说明

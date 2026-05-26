@@ -2,12 +2,12 @@
 
 **类型：** 单体 MCP service  
 **主要语言：** TypeScript  
-**架构：** MCP stdio server + 内存进程管理 + 多 CLI 适配层  
+**架构：** MCP stdio server + 内存进程管理 + 本地进程注册表 + 多 CLI 适配层  
 **最后更新：** 2026-05-14
 
 ## 项目概览
 
-`agent-bridge-mcp` 是 MCP-only server，用于通过 MCP tools 启动和管理本机 Claude、Codex、Gemini、Forge、OpenCode CLI 后台任务。项目不直接调用模型 API，不提供人类 CLI 子命令，也不持久化进程状态。
+`agent-bridge-mcp` 是 MCP-only server，用于通过 MCP tools 启动和管理本机 Claude、Codex、Gemini、Forge、OpenCode CLI 后台任务。项目不直接调用模型 API，不提供人类 CLI 子命令；运行中句柄在内存中，进程元数据和日志路径写入本地注册表。
 
 ## 快速参考
 
@@ -33,7 +33,7 @@
 
 - [MCP Tool Contracts](./mcp-tool-contracts.md) - 对外 MCP tools 契约
 - [API Contracts](./api-contracts.md) - MCP API 风格契约与示例
-- [Data Models](./data-models.md) - 内存状态模型与持久化边界
+- [Data Models](./data-models.md) - 内存状态、本地注册表与持久化边界
 
 ## 现有文档
 
@@ -120,7 +120,7 @@ npm test
 ## 不可忽略约束
 
 - 不要把项目改回“人类 CLI + MCP”双模式。
-- 不要新增文件持久化进程状态。
+- 调整本地注册表或日志持久化语义时，必须同步文档和契约测试。
 - `run` 必须立即返回 PID，不能等待任务完成。
 - `doctor` 只检查二进制路径和可执行性，不检查登录态。
 - `peek` 不能返回原始工具输出或累计 stdout/stderr。

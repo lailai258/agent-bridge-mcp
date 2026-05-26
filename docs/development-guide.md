@@ -180,8 +180,8 @@ npm_config_cache="/private/tmp/agent-bridge-mcp-npm-cache" npm pack --dry-run
 
 ### `get_result` 找不到 PID
 
-- PID 只保存在当前 server 内存中。
-- server 重启后旧 PID 不可恢复。
+- 运行中 ChildProcess 句柄只保存在当前 server 内存中。
+- server 重启后可从本地注册表恢复已记录 PID 的基础结果，但不能重新附加实时输出流。
 - 已执行 `cleanup_processes` 的进程记录会被移除。
 
 ---

@@ -27,7 +27,7 @@ This server bridges that gap:
 - Query compact or verbose results later.
 - Observe short windows of live natural-language output with `peek`.
 - Use one MCP contract across Claude, Codex, Gemini, Forge, and OpenCode.
-- Keep process state simple and in memory for the current server lifecycle.
+- Keep live process handles in memory and persist lightweight process metadata/log paths for recovery across MCP server restarts.
 
 ## What It Is Not
 
@@ -36,7 +36,7 @@ This server bridges that gap:
 - It is not a model API gateway.
 - It is not a human-facing terminal CLI suite.
 - It does not provide `ai-cli run`, `ai-cli ps`, or similar subcommands.
-- It does not persist process state across MCP server restarts.
+- It persists process metadata and stdout/stderr logs under `~/.agent-bridge-mcp` by default; set `AGENT_BRIDGE_PROCESS_REGISTRY_DIR` to override the location.
 - It does not verify CLI login state, subscriptions, model access, or terms acceptance.
 
 ## Supported Agent CLIs
@@ -165,6 +165,7 @@ Or wait for it:
 {
   "pids": [12345],
   "timeout": 300,
+  "on_timeout": "return_status",
   "verbose": false
 }
 ```
@@ -194,7 +195,7 @@ Optional:
 
 ### `list_processes`
 
-Lists tracked processes in the current server memory:
+Lists tracked processes from current server memory plus the persisted process registry:
 
 - `pid`
 - `agent`
@@ -218,8 +219,11 @@ Waits for one or more tracked processes to finish.
 Parameters:
 
 - `pids`: non-empty PID array.
-- `timeout`: seconds, default `180`.
+- `timeout`: logical wait budget in seconds. Defaults to `900` and can be raised with `AGENT_BRIDGE_WAIT_TIMEOUT_SEC`.
+- `on_timeout`: `return_status` by default; returns current running results when the per-call observation window expires. Use `throw` only for legacy timeout errors.
 - `verbose`: return verbose result objects.
+
+One MCP tool call observes at most `AGENT_BRIDGE_WAIT_CALL_WINDOW_SEC` seconds, default `90` and capped at `110`, so host `tools/call` deadlines are not hit while long-running child processes keep running.
 
 ### `peek`
 
@@ -244,7 +248,7 @@ Sends `SIGTERM` to a running process by PID.
 
 ### `cleanup_processes`
 
-Removes completed and failed process records from the server's in-memory process table.
+Removes completed and failed process records from the server's in-memory process table and persisted registry. Log files are left on disk for troubleshooting.
 
 ### `doctor`
 
@@ -412,7 +416,8 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 Core modules:
 
 - [src/app/mcp.ts](./src/app/mcp.ts): MCP server, tool registration, handler dispatch, error mapping.
-- [src/process-service.ts](./src/process-service.ts): in-memory process lifecycle management.
+- [src/process-service.ts](./src/process-service.ts): process lifecycle management, wait/peek/kill orchestration, and registry integration.
+- [src/process-registry.ts](./src/process-registry.ts): persisted process metadata and stdout/stderr log paths.
 - [src/cli-builder.ts](./src/cli-builder.ts): converts `run` input into safe CLI argument arrays.
 - [src/cli-utils.ts](./src/cli-utils.ts): CLI path resolution and doctor status.
 - [src/model-catalog.ts](./src/model-catalog.ts): model lists, aliases, and OpenCode dynamic model metadata.

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
@@ -8,7 +8,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 vi.mock('node:child_process', () => ({
   spawn: vi.fn()
 }));
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  appendFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),
@@ -44,6 +50,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 }));
 
 const mockExistsSync = vi.mocked(existsSync);
+const mockReadFileSync = vi.mocked(readFileSync);
 const mockHomedir = vi.mocked(homedir);
 
 describe('Argument Validation Tests', () => {
@@ -72,6 +79,7 @@ describe('Argument Validation Tests', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     // Set up process.env
     process.env = { ...process.env };
+    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, processes: [] }));
   });
 
   describe('Tool Arguments Schema', () => {

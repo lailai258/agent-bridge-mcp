@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawn } from 'node:child_process';
-import { accessSync, existsSync } from 'node:fs';
+import { accessSync, existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve as pathResolve } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -9,12 +9,20 @@ import { EventEmitter } from 'node:events';
 
 // Mock dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  accessSync: vi.fn(),
+  appendFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),
   join: vi.fn((...args) => args.join('/')),
-  isAbsolute: vi.fn((path) => path.startsWith('/'))
+  isAbsolute: vi.fn((path) => path.startsWith('/')),
+  dirname: vi.fn((path) => '/tmp')
 }));
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js');
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
@@ -51,6 +59,7 @@ vi.mock('../../package.json', () => ({
 // Re-import after mocks
 const mockExistsSync = vi.mocked(existsSync);
 const mockAccessSync = vi.mocked(accessSync);
+const mockReadFileSync = vi.mocked(readFileSync);
 const mockSpawn = vi.mocked(spawn);
 const mockHomedir = vi.mocked(homedir);
 const mockPathResolve = vi.mocked(pathResolve);
@@ -77,6 +86,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       }
       throw new Error('not executable');
     });
+    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, processes: [] }));
   });
 
   afterEach(() => {
@@ -128,7 +138,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       const findClaudeCli = module.default?.findClaudeCli || module.findClaudeCli;
       
       const result = findClaudeCli();
-      expect(result).toBe('/home/user/.claude/local/claude');
+      expect(result).toBe('claude');
     });
 
     it('should fallback to PATH when local does not exist', async () => {
@@ -215,7 +225,7 @@ describe('ClaudeCodeServer Unit Tests', () => {
       // @ts-ignore
       const findOpencodeCli = module.default?.findOpencodeCli || module.findOpencodeCli;
 
-      expect(findOpencodeCli()).toBe('/usr/bin/opencode');
+      expect(findOpencodeCli()).toBe('opencode');
     });
 
     it('should use custom name from OPENCODE_CLI_NAME', async () => {
@@ -845,8 +855,12 @@ describe('ClaudeCodeServer Unit Tests', () => {
       // Mock readFileSync
       const readFileSyncMock = vi.fn().mockReturnValue('Content from file');
       vi.doMock('node:fs', () => ({
+        accessSync: mockAccessSync,
+        appendFileSync: vi.fn(),
         existsSync: mockExistsSync,
-        readFileSync: readFileSyncMock
+        mkdirSync: vi.fn(),
+        readFileSync: readFileSyncMock,
+        writeFileSync: vi.fn(),
       }));
       
       // Set up Server mock

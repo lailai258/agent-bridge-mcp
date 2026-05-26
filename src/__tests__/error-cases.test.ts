@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { EventEmitter } from 'node:events';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
@@ -8,7 +8,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 // Mock dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  appendFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),
@@ -45,6 +51,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 const mockExistsSync = vi.mocked(existsSync);
 const mockSpawn = vi.mocked(spawn);
 const mockHomedir = vi.mocked(homedir);
+const mockReadFileSync = vi.mocked(readFileSync);
 
 describe('Error Handling Tests', () => {
   let consoleErrorSpy: any;
@@ -73,6 +80,7 @@ describe('Error Handling Tests', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     originalEnv = { ...process.env };
     process.env = { ...originalEnv };
+    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, processes: [] }));
   });
 
   afterEach(() => {

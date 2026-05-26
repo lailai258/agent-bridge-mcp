@@ -13,6 +13,7 @@ import { debugLog, getCliDoctorStatus, type CliBinaryStatus } from '../cli-utils
 import { getModelParameterDescription, getModelsPayload, getSupportedModelsDescription } from '../model-catalog.js';
 import { validatePeekPids, validatePeekTimeSec } from '../peek.js';
 import { ProcessService } from '../process-service.js';
+import { getWaitTimeoutConfig, validateWaitTimeoutMode, validateWaitTimeoutSec } from '../wait-config.js';
 
 const require = createRequire(import.meta.url);
 const SERVER_VERSION = (require('../../package.json') as { version: string }).version;
@@ -235,7 +236,12 @@ ${getSupportedModelsDescription()}
               },
               timeout: {
                 type: 'number',
-                description: 'Optional: Maximum time to wait in seconds. Defaults to 180 (3 minutes).',
+                description: 'Optional: Logical wait budget in seconds. Defaults to 900 (15 minutes), configurable with AGENT_BRIDGE_WAIT_TIMEOUT_SEC. A single MCP tool call observes at most AGENT_BRIDGE_WAIT_CALL_WINDOW_SEC seconds (default 90) to stay below host tools/call deadlines.',
+              },
+              on_timeout: {
+                type: 'string',
+                enum: ['return_status', 'throw'],
+                description: 'Optional: return_status returns running process results when the wait window expires; throw preserves the legacy timeout error. Defaults to return_status.',
               },
               verbose: {
                 type: 'boolean',
@@ -407,10 +413,13 @@ ${getSupportedModelsDescription()}
       throw new McpError(ErrorCode.InvalidParams, 'Missing or invalid required parameter: pids (must be a non-empty array of numbers)');
     }
     try {
+      const timeout = validateWaitTimeoutSec(toolArguments.timeout, getWaitTimeoutConfig());
+      const timeoutMode = validateWaitTimeoutMode(toolArguments.on_timeout);
       const results = await this.processService.waitForProcesses(
         toolArguments.pids,
-        typeof toolArguments.timeout === 'number' ? toolArguments.timeout : 180,
-        !!toolArguments.verbose
+        timeout,
+        !!toolArguments.verbose,
+        timeoutMode
       );
       return {
         content: [{
@@ -419,7 +428,7 @@ ${getSupportedModelsDescription()}
         }]
       };
     } catch (error: any) {
-      const code = /not found/.test(error.message) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
+      const code = /not found|timeout must|on_timeout/.test(error.message) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
       throw new McpError(code, error.message);
     }
   }

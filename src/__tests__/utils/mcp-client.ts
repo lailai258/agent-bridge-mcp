@@ -166,6 +166,7 @@ export function createTestClient(options: {
     VITEST: '',  // Unset so server starts
     MCP_CLAUDE_DEBUG: debug ? 'true' : '',
     CLAUDE_CLI_NAME: claudeCliName,
+    AGENT_BRIDGE_PROCESS_REGISTRY_DIR: process.env.AGENT_BRIDGE_PROCESS_REGISTRY_DIR || '/tmp/agent-bridge-mcp-test-registry',
     ...env,
   });
 }

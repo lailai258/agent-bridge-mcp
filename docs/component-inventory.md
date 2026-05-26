@@ -18,7 +18,7 @@
 ### `src/process-service.ts`
 
 - **职责：** 后台子进程生命周期管理。
-- **核心状态：** 内存 `Map<number, TrackedProcess>`。
+- **核心状态：** 内存 `Map<number, TrackedProcess>` + 本地 `ProcessRegistry`。
 - **关键能力：** `startProcess()`、`listProcesses()`、`getProcessResult()`、`waitForProcesses()`、`peekProcesses()`、`killProcess()`、`cleanupProcesses()`。
 - **变更风险：** 高。该模块定义 PID 生命周期、状态流转和 stdout/stderr 收集语义。
 
@@ -97,7 +97,7 @@
 - 无浏览器 UI。
 - 无数据库或 ORM。
 - 无 HTTP server 路由。
-- 无持久化队列。
+- 无持久化队列；只有轻量进程注册表和 stdout/stderr 日志文件。
 - 无人类 CLI 子命令。
 
 ---

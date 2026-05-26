@@ -75,6 +75,11 @@ export function buildProcessResult(context: ProcessResultContext, agentOutput: a
     response.agentOutput = shapedAgentOutput;
   }
 
+  if (verbose) {
+    response.stdout = context.stdout;
+    response.stderr = context.stderr;
+  }
+
   if (!response.agentOutput || preserveRawFailureOutput) {
     response.stdout = context.stdout;
     response.stderr = context.stderr;

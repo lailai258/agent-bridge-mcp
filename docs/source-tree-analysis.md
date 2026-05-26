@@ -28,7 +28,9 @@ agent-bridge-mcp/
 │   ├── parsers.ts                  # 多 CLI 输出解析与 peek 事件提取
 │   ├── peek.ts                     # peek 参数校验和响应结构辅助
 │   ├── process-result.ts           # compact / verbose 结果整形
-│   ├── process-service.ts          # 内存进程生命周期管理
+│   ├── process-service.ts          # 进程生命周期管理与注册表集成
+│   ├── process-registry.ts         # 本地进程注册表与日志路径
+│   ├── wait-config.ts              # wait 逻辑预算与单次观察窗口配置
 │   └── server.ts                   # server 导出与非测试环境自启动
 ├── docs/
 │   ├── architecture.md
@@ -133,7 +135,7 @@ agent-bridge-mcp/
 
 - `dist/` 是构建输出，不要手工修改。
 - 所有相对源码导入必须保留 `.js` 后缀。
-- 不要新增人类 CLI 文件或持久化进程状态服务。
+- 不要新增人类 CLI 文件；调整持久化注册表语义时必须同步 MCP 契约、文档和测试。
 - 修改 MCP tool 契约时，需要同步 `src/app/mcp.ts`、`docs/mcp-tool-contracts.md` 和契约测试。
 
 ---

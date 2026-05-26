@@ -2,13 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
-import { existsSync } from 'node:fs';
-import { resolve as pathResolve } from 'node:path';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 // Mock dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  appendFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 vi.mock('node:os');
 vi.mock('node:path', () => ({
   resolve: vi.fn((path) => path),
@@ -52,11 +57,16 @@ vi.mock('../../package.json', () => ({
 const mockSpawn = vi.mocked(spawn);
 const mockHomedir = vi.mocked(homedir);
 const mockExistsSync = vi.mocked(existsSync);
+const mockReadFileSync = vi.mocked(readFileSync);
+const mockWriteFileSync = vi.mocked(writeFileSync);
+const mockAppendFileSync = vi.mocked(appendFileSync);
+const mockMkdirSync = vi.mocked(mkdirSync);
 
 describe('Wait Tool Tests', () => {
   let handlers: Map<string, Function>;
   let mockServerInstance: any;
   let server: any;
+  let originalEnv: NodeJS.ProcessEnv;
 
   // Setup function to initialize server with mocks
   const setupServer = async () => {
@@ -81,14 +91,18 @@ describe('Wait Tool Tests', () => {
   };
 
   beforeEach(async () => {
+    originalEnv = { ...process.env };
+    process.env = { ...originalEnv };
     mockHomedir.mockReturnValue('/home/user');
     mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, processes: [] }));
     await setupServer();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    process.env = originalEnv;
   });
 
   const createMockProcess = (pid: number) => {
@@ -140,9 +154,10 @@ describe('Wait Tool Tests', () => {
     const result = await waitPromise;
     const response = JSON.parse(result.content[0].text);
 
-    expect(response).toHaveLength(1);
-    expect(response[0].pid).toBe(12345);
-    expect(response[0].status).toBe('completed');
+    expect(response.timed_out).toBe(false);
+    expect(response.results).toHaveLength(1);
+    expect(response.results[0].pid).toBe(12345);
+    expect(response.results[0].status).toBe('completed');
     // expect(response[0].stdout).toBe('Process output'); // Flaky test
   });
 
@@ -176,7 +191,8 @@ describe('Wait Tool Tests', () => {
     });
 
     const response = JSON.parse(result.content[0].text);
-    expect(response[0].status).toBe('completed');
+    expect(response.timed_out).toBe(false);
+    expect(response.results[0].status).toBe('completed');
   });
 
   it('should wait for multiple processes', async () => {
@@ -212,9 +228,10 @@ describe('Wait Tool Tests', () => {
     const result = await waitPromise;
     const response = JSON.parse(result.content[0].text);
 
-    expect(response).toHaveLength(2);
-    expect(response.find((r: any) => r.pid === 101).status).toBe('completed');
-    expect(response.find((r: any) => r.pid === 102).status).toBe('completed');
+    expect(response.timed_out).toBe(false);
+    expect(response.results).toHaveLength(2);
+    expect(response.results.find((r: any) => r.pid === 101).status).toBe('completed');
+    expect(response.results.find((r: any) => r.pid === 102).status).toBe('completed');
   });
 
   it('should clear timeout timers after wait resolves', async () => {
@@ -250,7 +267,8 @@ describe('Wait Tool Tests', () => {
     const result = await waitPromise;
     const response = JSON.parse(result.content[0].text);
 
-    expect(response[0].status).toBe('completed');
+    expect(response.timed_out).toBe(false);
+    expect(response.results[0].status).toBe('completed');
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -270,7 +288,8 @@ describe('Wait Tool Tests', () => {
     }
   });
 
-  it('should handle timeout', async () => {
+  it('should return running status on timeout by default', async () => {
+    vi.useFakeTimers();
     const callToolHandler = handlers.get('callTool')!;
     const mockProcess = createMockProcess(12347);
     mockSpawn.mockReturnValue(mockProcess);
@@ -292,11 +311,112 @@ describe('Wait Tool Tests', () => {
 
     // Don't emit close event
 
-    try {
-      await waitPromise;
-      expect.fail('Should have thrown');
-    } catch (error: any) {
-      expect(error.message).toContain('Timed out');
-    }
+    await vi.advanceTimersByTimeAsync(90_000);
+    const result = await waitPromise;
+    const response = JSON.parse(result.content[0].text);
+
+    expect(response.timed_out).toBe(true);
+    expect(response.timeout).toBe(900);
+    expect(response.observed_timeout).toBe(90);
+    expect(response.next_action).toContain('get_result');
+    expect(response.results[0].pid).toBe(12347);
+    expect(response.results[0].status).toBe('running');
+  });
+
+  it('should cap a single wait call below host tool-call timeout', async () => {
+    vi.useFakeTimers();
+    process.env.AGENT_BRIDGE_WAIT_CALL_WINDOW_SEC = '90';
+    await setupServer();
+    const callToolHandler = handlers.get('callTool')!;
+    const mockProcess = createMockProcess(12357);
+    mockSpawn.mockReturnValue(mockProcess);
+
+    await callToolHandler({
+      params: { name: 'run', arguments: { prompt: 'test', workFolder: '/tmp' } }
+    });
+
+    const waitPromise = callToolHandler({
+      params: {
+        name: 'wait',
+        arguments: {
+          pids: [12357],
+          timeout: 300,
+          on_timeout: 'return_status'
+        }
+      }
+    });
+
+    await vi.advanceTimersByTimeAsync(90_000);
+    const result = await waitPromise;
+    const response = JSON.parse(result.content[0].text);
+
+    expect(response.timed_out).toBe(true);
+    expect(response.timeout).toBe(900);
+    expect(response.observed_timeout).toBe(90);
+    expect(response.next_action).toContain('wait again');
+    expect(response.results[0].status).toBe('running');
+  });
+
+  it('should return completed if a process finishes exactly as the wait window expires', async () => {
+    vi.useFakeTimers();
+    process.env.AGENT_BRIDGE_WAIT_CALL_WINDOW_SEC = '90';
+    await setupServer();
+    const callToolHandler = handlers.get('callTool')!;
+    const mockProcess = createMockProcess(12358);
+    mockSpawn.mockReturnValue(mockProcess);
+
+    await callToolHandler({
+      params: { name: 'run', arguments: { prompt: 'test', workFolder: '/tmp' } }
+    });
+
+    const waitPromise = callToolHandler({
+      params: {
+        name: 'wait',
+        arguments: {
+          pids: [12358],
+          timeout: 120,
+          on_timeout: 'return_status'
+        }
+      }
+    });
+
+    setTimeout(() => {
+      mockProcess.emit('close', 0);
+    }, 89_999);
+
+    await vi.advanceTimersByTimeAsync(90_000);
+    const result = await waitPromise;
+    const response = JSON.parse(result.content[0].text);
+
+    expect(response.timed_out).toBe(false);
+    expect(response.timeout).toBe(900);
+    expect(response.observed_timeout).toBe(90);
+    expect(response.results[0].status).toBe('completed');
+  });
+
+  it('should preserve legacy timeout error when on_timeout is throw', async () => {
+    vi.useFakeTimers();
+    const callToolHandler = handlers.get('callTool')!;
+    const mockProcess = createMockProcess(12356);
+    mockSpawn.mockReturnValue(mockProcess);
+
+    await callToolHandler({
+      params: { name: 'run', arguments: { prompt: 'test', workFolder: '/tmp' } }
+    });
+
+    const waitPromise = callToolHandler({
+      params: {
+        name: 'wait',
+        arguments: {
+          pids: [12356],
+          timeout: 0.1,
+          on_timeout: 'throw'
+        }
+      }
+    });
+
+    const expectation = expect(waitPromise).rejects.toThrow('Timed out after 90 seconds');
+    await vi.advanceTimersByTimeAsync(90_000);
+    await expectation;
   });
 });

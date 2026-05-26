@@ -2,7 +2,7 @@
 
 **日期：** 2026-05-14  
 **类型：** TypeScript / Node.js MCP-only 后台进程编排服务  
-**架构：** 单体仓库，MCP stdio server + 内存进程管理 + 多 CLI 适配层
+**架构：** 单体仓库，MCP stdio server + 内存进程管理 + 本地进程注册表 + 多 CLI 适配层
 
 ## 执行摘要
 
@@ -34,7 +34,7 @@
 ## 核心能力
 
 - 通过 `run` 启动 Claude、Codex、Gemini、Forge、OpenCode CLI 后台任务，并立即返回 PID。
-- 使用内存 `Map` 跟踪进程状态、stdout、stderr、模型、工作目录、启动时间和退出码。
+- 使用内存 `Map` 跟踪运行中进程句柄、状态、stdout、stderr、模型、工作目录、启动时间和退出码，并将进程元数据写入本地注册表。
 - 通过 `get_result` 和 `wait` 返回 compact 或 verbose 结果。
 - 通过 `peek` 在短观察窗口内提取自然语言消息和可选的规范化工具调用事件。
 - 通过 `doctor` 检查 CLI 二进制路径解析和可执行性，不检查登录态或模型权限。
@@ -47,7 +47,7 @@
 - `src/cli-builder.ts` 是 CLI 参数构造边界：把 MCP `run` 参数转换成不同 CLI 的命令参数。
 - `src/parsers.ts` 和 `src/process-result.ts` 共同处理外部 CLI 输出解析和响应裁剪。
 - `src/model-catalog.ts` 集中维护模型列表、别名和 OpenCode 动态模型说明。
-- 项目不持久化进程状态；server 重启后旧 PID 不可恢复。
+- 项目不使用数据库；server 重启后可从本地注册表恢复已记录 PID 的基础状态和日志内容。
 
 ## 开发概览
 

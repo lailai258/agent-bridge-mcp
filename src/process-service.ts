@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
 import { parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
@@ -10,7 +11,9 @@ import {
   type PeekProcessResult,
   type PeekResponse,
 } from './peek.js';
+import { ProcessRegistry, type ProcessRegistryRecord } from './process-registry.js';
 import { buildProcessResult } from './process-result.js';
+import { getWaitTimeoutConfig, type WaitTimeoutMode } from './wait-config.js';
 
 export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
@@ -27,6 +30,7 @@ interface TrackedProcess {
   stderr: string;
   status: ProcessStatus;
   exitCode?: number;
+  registryRecord?: ProcessRegistryRecord;
 }
 
 export interface ProcessListItem {
@@ -44,6 +48,16 @@ export interface StartProcessResult {
 
 interface ProcessServiceOptions {
   cliPaths: BuildCliCommandOptions['cliPaths'];
+  registry?: ProcessRegistry;
+}
+
+export interface WaitForProcessesResponse {
+  timed_out: boolean;
+  timeout: number;
+  observed_timeout: number;
+  results: any[];
+  next_action?: string;
+  message?: string;
 }
 
 function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any {
@@ -73,10 +87,12 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
 
 export class ProcessService {
   private readonly processManager = new Map<number, TrackedProcess>();
+  private readonly registry: ProcessRegistry;
   private readonly cliPaths: BuildCliCommandOptions['cliPaths'];
 
   constructor(options: ProcessServiceOptions) {
     this.cliPaths = options.cliPaths;
+    this.registry = options.registry ?? new ProcessRegistry();
   }
 
   startProcess(options: Omit<BuildCliCommandOptions, 'cliPaths'>): StartProcessResult {
@@ -97,6 +113,7 @@ export class ProcessService {
       throw new Error(`Failed to start ${agent} CLI process`);
     }
 
+    const logPaths = this.registry.buildLogPaths(pid);
     const processEntry: TrackedProcess = {
       pid,
       process: childProcess,
@@ -109,20 +126,39 @@ export class ProcessService {
       stderr: '',
       status: 'running',
     };
+    const registryRecord: ProcessRegistryRecord = {
+      pid,
+      agent,
+      status: 'running',
+      startTime: processEntry.startTime,
+      workFolder: effectiveCwd,
+      prompt,
+      model: options.model,
+      command: cliPath,
+      args: processArgs,
+      stdoutPath: logPaths.stdoutPath,
+      stderrPath: logPaths.stderrPath,
+    };
+    processEntry.registryRecord = registryRecord;
 
     this.processManager.set(pid, processEntry);
+    this.registry.upsert(registryRecord);
 
     childProcess.stdout.on('data', (data) => {
       const entry = this.processManager.get(pid);
+      const chunk = data.toString();
       if (entry) {
-        entry.stdout += data.toString();
+        entry.stdout += chunk;
+        this.appendProcessLog(entry.registryRecord?.stdoutPath, chunk);
       }
     });
 
     childProcess.stderr.on('data', (data) => {
       const entry = this.processManager.get(pid);
+      const chunk = data.toString();
       if (entry) {
-        entry.stderr += data.toString();
+        entry.stderr += chunk;
+        this.appendProcessLog(entry.registryRecord?.stderrPath, chunk);
       }
     });
 
@@ -131,6 +167,11 @@ export class ProcessService {
       if (entry) {
         entry.status = code === 0 ? 'completed' : 'failed';
         entry.exitCode = code !== null ? code : undefined;
+        this.registry.update(pid, {
+          status: entry.status,
+          exitCode: entry.exitCode,
+          endTime: new Date().toISOString(),
+        });
       }
     });
 
@@ -139,6 +180,11 @@ export class ProcessService {
       if (entry) {
         entry.status = 'failed';
         entry.stderr += `\nProcess error: ${error.message}`;
+        this.appendProcessLog(entry.registryRecord?.stderrPath, `\nProcess error: ${error.message}`);
+        this.registry.update(pid, {
+          status: 'failed',
+          endTime: new Date().toISOString(),
+        });
       }
     });
 
@@ -152,8 +198,10 @@ export class ProcessService {
 
   listProcesses(): ProcessListItem[] {
     const processes: ProcessListItem[] = [];
+    const seen = new Set<number>();
 
     for (const [pid, process] of this.processManager.entries()) {
+      seen.add(pid);
       processes.push({
         pid,
         agent: process.toolType,
@@ -161,11 +209,23 @@ export class ProcessService {
       });
     }
 
+    for (const process of this.registry.readAll()) {
+      if (seen.has(process.pid)) {
+        continue;
+      }
+
+      processes.push({
+        pid: process.pid,
+        agent: process.agent,
+        status: this.refreshRegistryStatus(process).status,
+      });
+    }
+
     return processes;
   }
 
   getProcessResult(pid: number, verbose = false): any {
-    const process = this.processManager.get(pid);
+    const process = this.getProcessSnapshot(pid);
     if (!process) {
       throw new Error(`Process with PID ${pid} not found`);
     }
@@ -186,40 +246,94 @@ export class ProcessService {
     }, agentOutput, verbose);
   }
 
-  async waitForProcesses(pids: number[], timeoutSeconds = 180, verbose = false): Promise<any[]> {
+  async waitForProcesses(
+    pids: number[],
+    timeoutSeconds = getWaitTimeoutConfig().defaultTimeoutSec,
+    verbose = false,
+    timeoutMode: WaitTimeoutMode = 'return_status',
+    callWindowSeconds = getWaitTimeoutConfig().callWindowSec
+  ): Promise<WaitForProcessesResponse> {
     for (const pid of pids) {
-      if (!this.processManager.has(pid)) {
+      if (!this.getProcessSnapshot(pid)) {
         throw new Error(`Process with PID ${pid} not found`);
       }
     }
 
+    let stopPolling = false;
     const waitPromises = pids.map((pid) => {
-      const processEntry = this.processManager.get(pid)!;
+      const processEntry = this.processManager.get(pid);
 
-      if (processEntry.status !== 'running') {
-        return Promise.resolve();
+      if (processEntry && processEntry.status === 'running') {
+        return new Promise<void>((resolve) => {
+          processEntry.process.once('close', () => {
+            resolve();
+          });
+        });
       }
 
-      return new Promise<void>((resolve) => {
-        processEntry.process.once('close', () => {
-          resolve();
-        });
-      });
+      const persisted = this.registry.readAll().find((record) => record.pid === pid);
+      if (persisted && this.refreshRegistryStatus(persisted).status === 'running') {
+        return this.waitForPersistedProcessTerminal(persisted, () => stopPolling);
+      }
+
+      return Promise.resolve();
     });
 
-    const timeoutMs = timeoutSeconds * 1000;
+    // MCP 客户端/宿主通常还有外层 tools/call 超时；单次阻塞窗口必须低于外层限制。
+    const observedTimeoutSeconds = Math.min(timeoutSeconds, callWindowSeconds);
+    const timeoutMs = observedTimeoutSeconds * 1000;
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<void>((_, reject) => {
+    const timeoutPromise = new Promise<'timed_out'>((resolve) => {
       timeoutHandle = setTimeout(() => {
-        reject(new Error(`Timed out after ${timeoutSeconds} seconds waiting for processes`));
+        stopPolling = true;
+        resolve('timed_out');
       }, timeoutMs);
       timeoutHandle.unref?.();
     });
 
     try {
-      await Promise.race([Promise.all(waitPromises), timeoutPromise]);
-      return pids.map((pid) => this.getProcessResult(pid, verbose));
+      const raceResult = await Promise.race([
+        Promise.all(waitPromises).then(() => 'completed' as const),
+        timeoutPromise,
+      ]);
+      const results = pids.map((pid) => this.getProcessResult(pid, verbose));
+
+      if (raceResult === 'timed_out') {
+        const refreshedResults = pids.map((pid) => this.getProcessResult(pid, verbose));
+        const stillRunning = refreshedResults.some((result) => result.status === 'running');
+
+        if (!stillRunning) {
+          return {
+            timed_out: false,
+            timeout: timeoutSeconds,
+            observed_timeout: observedTimeoutSeconds,
+            results: refreshedResults,
+            message: `Processes completed while the wait call was returning after ${observedTimeoutSeconds} seconds`,
+          };
+        }
+
+        if (timeoutMode === 'throw') {
+          throw new Error(`Timed out after ${observedTimeoutSeconds} seconds waiting for processes`);
+        }
+
+        return {
+          timed_out: true,
+          timeout: timeoutSeconds,
+          observed_timeout: observedTimeoutSeconds,
+          results: refreshedResults,
+          next_action: 'Call get_result for current output or call wait again to continue waiting.',
+          message: `Wait call returned after ${observedTimeoutSeconds} seconds before the MCP tools/call deadline; processes may still be running`,
+        };
+      }
+
+      return {
+        timed_out: false,
+        timeout: timeoutSeconds,
+        observed_timeout: observedTimeoutSeconds,
+        results,
+      };
     } finally {
+      stopPolling = true;
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
@@ -242,7 +356,20 @@ export class ProcessService {
     for (const pid of targetPids) {
       const entry = this.processManager.get(pid);
       if (!entry) {
-        processes.push(buildNotFoundPeekProcess(pid));
+        const persisted = this.registry.readAll().find((record) => record.pid === pid);
+        if (persisted) {
+          const refreshed = this.refreshRegistryStatus(persisted);
+          processes.push({
+            pid,
+            agent: persisted.agent,
+            status: refreshed.status,
+            events: [],
+            truncated: false,
+            error: 'process is not attached to this server instance; use get_result for persisted stdout/stderr',
+          });
+        } else {
+          processes.push(buildNotFoundPeekProcess(pid));
+        }
         continue;
       }
 
@@ -324,6 +451,29 @@ export class ProcessService {
     });
   }
 
+  private waitForPersistedProcessTerminal(record: ProcessRegistryRecord, shouldStop: () => boolean): Promise<void> {
+    if (this.refreshRegistryStatus(record).status !== 'running') {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      const interval = setInterval(() => {
+        if (shouldStop()) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+
+        const latest = this.registry.readAll().find((entry) => entry.pid === record.pid) ?? record;
+        if (this.refreshRegistryStatus(latest).status !== 'running') {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 1000);
+      interval.unref?.();
+    });
+  }
+
   killProcess(pid: number): { pid: number; status: string; message: string } {
     const processEntry = this.processManager.get(pid);
     if (!processEntry) {
@@ -341,6 +491,11 @@ export class ProcessService {
     processEntry.process.kill('SIGTERM');
     processEntry.status = 'failed';
     processEntry.stderr += '\nProcess terminated by user';
+    this.appendProcessLog(processEntry.registryRecord?.stderrPath, '\nProcess terminated by user');
+    this.registry.update(pid, {
+      status: 'failed',
+      endTime: new Date().toISOString(),
+    });
 
     return {
       pid,
@@ -356,6 +511,15 @@ export class ProcessService {
       if (process.status === 'completed' || process.status === 'failed') {
         removedPids.push(pid);
         this.processManager.delete(pid);
+        this.registry.remove(pid);
+      }
+    }
+
+    for (const process of this.registry.readAll()) {
+      const refreshed = this.refreshRegistryStatus(process);
+      if (refreshed.status === 'completed' || refreshed.status === 'failed') {
+        removedPids.push(process.pid);
+        this.registry.remove(process.pid);
       }
     }
 
@@ -364,5 +528,73 @@ export class ProcessService {
       removedPids,
       message: `Cleaned up ${removedPids.length} finished process(es)`,
     };
+  }
+
+  private appendProcessLog(filePath: string | undefined, chunk: string): void {
+    if (!filePath) {
+      return;
+    }
+
+    try {
+      appendFileSync(filePath, chunk, 'utf-8');
+    } catch {
+      // 日志持久化失败不应中断正在运行的模型进程。
+    }
+  }
+
+  private getProcessSnapshot(pid: number): Omit<TrackedProcess, 'process' | 'registryRecord'> | TrackedProcess | null {
+    const running = this.processManager.get(pid);
+    if (running) {
+      return running;
+    }
+
+    const persisted = this.registry.readAll().find((record) => record.pid === pid);
+    if (!persisted) {
+      return null;
+    }
+
+    const refreshed = this.refreshRegistryStatus(persisted);
+    return {
+      pid: refreshed.pid,
+      prompt: refreshed.prompt,
+      workFolder: refreshed.workFolder,
+      model: refreshed.model,
+      toolType: refreshed.agent,
+      startTime: refreshed.startTime,
+      stdout: this.readLogFile(refreshed.stdoutPath),
+      stderr: this.readLogFile(refreshed.stderrPath),
+      status: refreshed.status,
+      exitCode: refreshed.exitCode,
+    };
+  }
+
+  private readLogFile(filePath: string): string {
+    try {
+      return readFileSync(filePath, 'utf-8');
+    } catch {
+      return '';
+    }
+  }
+
+  private refreshRegistryStatus(record: ProcessRegistryRecord): ProcessRegistryRecord {
+    if (record.status !== 'running') {
+      return record;
+    }
+
+    try {
+      process.kill(record.pid, 0);
+      return record;
+    } catch {
+      const refreshed: ProcessRegistryRecord = {
+        ...record,
+        status: 'failed',
+        endTime: record.endTime ?? new Date().toISOString(),
+      };
+      this.registry.update(record.pid, {
+        status: refreshed.status,
+        endTime: refreshed.endTime,
+      });
+      return refreshed;
+    }
   }
 }

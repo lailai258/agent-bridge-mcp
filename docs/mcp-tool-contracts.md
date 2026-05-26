@@ -121,12 +121,21 @@ verbose 结果额外包含：
 ### 参数
 
 - `pids`：PID 数组，必须非空。
-- `timeout`：秒级超时时间，默认 180。
+- `timeout`：逻辑等待预算，单位秒，默认 900。
+- `on_timeout`：默认 `return_status`，观察窗口结束时返回当前进程状态；`throw` 保留旧的超时错误行为。
 - `verbose`：为 `true` 时每个结果返回完整信息。
 
 ### 返回
 
-返回与输入 PID 对应的结果数组。任一 PID 不存在时返回参数错误。
+返回 wait 响应对象。任一 PID 不存在时返回参数错误。
+
+- `timed_out`：本次观察窗口结束时是否仍有进程在运行。
+- `timeout`：最终采用的逻辑等待预算。
+- `observed_timeout`：本次 MCP tool call 的实际观察窗口。
+- `results`：与输入 PID 对应的结果数组。
+- `next_action`：未完成时的建议动作。
+
+单次 MCP tool call 默认只观察 90 秒，避免宿主层 `tools/call` 120 秒一类的外层超时先截断；后台进程不会因为 `timed_out: true` 被终止。
 
 ## `peek`
 
