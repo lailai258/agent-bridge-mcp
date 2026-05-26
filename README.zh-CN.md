@@ -64,7 +64,7 @@ server 可以启动以下本机工具：
 ### 从源码安装
 
 ```bash
-git clone https://github.com/agent-bridge/agent-bridge-mcp.git
+git clone https://github.com/lailai258/agent-bridge-mcp.git
 cd agent-bridge-mcp
 npm install
 npm run build
@@ -448,6 +448,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 
 ## 安全说明
 
+- 重要：部分 CLI 适配器会主动使用跳过审批或沙箱的危险参数，以便后台任务不被交互式确认卡住。Claude 和 Antigravity 使用 `--dangerously-skip-permissions`，Codex 使用 `--dangerously-bypass-approvals-and-sandbox`。只应在你信任的工作目录中运行本 server，并在接入不可信 prompt 或仓库前确认所选 CLI 自身的安全模型。
 - 子进程使用参数数组启动，不把 prompt 拼接进 shell 字符串。
 - 自定义 CLI 环境变量会拒绝相对路径。
 - `peek` 不返回原始工具输出或原始命令输出。

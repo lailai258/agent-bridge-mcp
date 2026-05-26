@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.agent-bridge/agent-bridge-mcp-server",
-  "description": "MCP-only server for running Claude, Codex, Gemini, Forge, and OpenCode CLIs as background jobs",
+  "name": "io.github.lailai258/agent-bridge-mcp-server",
+  "description": "MCP-only server for running Claude, Codex, Gemini, Forge, OpenCode, and Antigravity CLIs as background jobs",
   "repository": {
-    "url": "https://github.com/agent-bridge/agent-bridge-mcp",
+    "url": "https://github.com/lailai258/agent-bridge-mcp",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.1.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "agent-bridge-mcp-server",
-      "version": "0.1.0",
+      "version": "0.1.4",
       "transport": {
         "type": "stdio"
       }

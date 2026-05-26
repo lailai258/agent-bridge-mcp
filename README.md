@@ -64,7 +64,7 @@ You must install, configure, and sign in to the CLIs you plan to use before call
 ### From Source
 
 ```bash
-git clone https://github.com/agent-bridge/agent-bridge-mcp.git
+git clone https://github.com/lailai258/agent-bridge-mcp.git
 cd agent-bridge-mcp
 npm install
 npm run build
@@ -437,17 +437,18 @@ Core modules:
 
 ## Runtime State
 
-Process records live only in the current Node.js server process.
+Live child process handles exist only in the current Node.js server process. Lightweight process metadata and stdout/stderr log paths are persisted in the local registry, which defaults to `~/.agent-bridge-mcp` and can be changed with `AGENT_BRIDGE_PROCESS_REGISTRY_DIR`.
 
 Consequences:
 
-- A PID returned by `run` is only valid while the same MCP server process is alive.
-- Restarting the MCP server loses all tracked process records.
-- `cleanup_processes` only removes records from memory; it does not delete files.
+- A PID returned by `run` can be observed live while the same MCP server process is alive.
+- Restarting the MCP server cannot reattach to live stdout/stderr streams, but it can recover basic results and log-backed output for recorded PIDs.
+- `cleanup_processes` removes finished records from memory and the persisted registry; it does not delete log files.
 - Each `run` call starts a new child process.
 
 ## Security Notes
 
+- Important: some CLI adapters intentionally launch local agents with approval or sandbox bypass flags so that background jobs can complete without interactive prompts. Claude and Antigravity use `--dangerously-skip-permissions`; Codex uses `--dangerously-bypass-approvals-and-sandbox`. Only run this server against work folders you trust, and review the selected CLI's own security model before exposing it to untrusted prompts or repositories.
 - Child processes are spawned with argument arrays rather than shell-concatenated prompt strings.
 - Custom CLI environment variables reject relative paths.
 - `peek` excludes raw tool output and raw command output.
