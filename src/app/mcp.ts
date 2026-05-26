@@ -77,6 +77,7 @@ export class ClaudeCodeServer {
   private geminiCliPath: string;
   private forgeCliPath: string;
   private opencodeCliPath: string;
+  private antigravityCliPath: string;
   private processService: ProcessService;
   private sigintHandler?: () => Promise<void>;
 
@@ -87,11 +88,13 @@ export class ClaudeCodeServer {
     this.geminiCliPath = this.resolveDoctorCliPath(doctorStatus.gemini);
     this.forgeCliPath = this.resolveDoctorCliPath(doctorStatus.forge);
     this.opencodeCliPath = this.resolveDoctorCliPath(doctorStatus.opencode);
+    this.antigravityCliPath = this.resolveDoctorCliPath(doctorStatus.antigravity);
     console.error(`[Setup] Using Claude CLI command/path: ${this.claudeCliPath}`);
     console.error(`[Setup] Using Codex CLI command/path: ${this.codexCliPath}`);
     console.error(`[Setup] Using Gemini CLI command/path: ${this.geminiCliPath}`);
     console.error(`[Setup] Using Forge CLI command/path: ${this.forgeCliPath}`);
     console.error(`[Setup] Using OpenCode CLI command/path: ${this.opencodeCliPath}`);
+    console.error(`[Setup] Using Antigravity CLI command/path: ${this.antigravityCliPath}`);
     this.processService = new ProcessService({
       cliPaths: {
         claude: this.claudeCliPath,
@@ -99,6 +102,7 @@ export class ClaudeCodeServer {
         gemini: this.geminiCliPath,
         forge: this.forgeCliPath,
         opencode: this.opencodeCliPath,
+        antigravity: this.antigravityCliPath,
       },
     });
 
@@ -130,7 +134,7 @@ export class ClaudeCodeServer {
 
   private getCliConfigurationError(): string | null {
     const doctorStatus = getCliDoctorStatus();
-    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode'] as const) {
+    for (const name of ['claude', 'codex', 'gemini', 'forge', 'opencode', 'antigravity'] as const) {
       if (doctorStatus[name].error) {
         return doctorStatus[name].error;
       }
@@ -143,7 +147,7 @@ export class ClaudeCodeServer {
       tools: [
         {
           name: 'run',
-          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, Forge, or OpenCode CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
+          description: `AI Agent Runner: Starts a Claude, Codex, Gemini, Forge, OpenCode, or Antigravity CLI process in the background and returns a PID immediately. Use list_processes and get_result to monitor progress.
 
 • File ops: Create, read, (fuzzy) edit, move, copy, delete, list files, analyze/ocr images, file content analysis
 • Code: Generate / analyse / refactor / fix
@@ -187,11 +191,11 @@ ${getSupportedModelsDescription()}
               },
               reasoning_effort: {
                 type: 'string',
-                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, and OpenCode do not support reasoning_effort in this integration.',
+                description: 'Reasoning control for Claude and Codex. Claude uses --effort with "low", "medium", "high", "xhigh", "max". Codex uses model_reasoning_effort with "low", "medium", "high", "xhigh". Gemini, Forge, OpenCode, and Antigravity do not support reasoning_effort in this integration.',
               },
               session_id: {
                 type: 'string',
-                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection.',
+                description: 'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Antigravity. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection. Antigravity maps this value to --conversation in print mode.',
               },
             },
             required: ['workFolder'],

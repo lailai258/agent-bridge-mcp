@@ -13,6 +13,7 @@
   - Gemini CLI
   - Forge CLI
   - OpenCode CLI
+  - Antigravity CLI
 
 本项目只检查 CLI 二进制路径与可执行性，不负责登录、模型权限或条款确认。
 
@@ -119,6 +120,7 @@ npm_config_cache="/private/tmp/agent-bridge-mcp-npm-cache" npm pack --dry-run
 - `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
+- `ANTIGRAVITY_CLI_NAME`
 
 约束：
 

@@ -152,12 +152,14 @@ const DEFAULT_SERVER_PATH = 'dist/server.js';
 export function createTestClient(options: {
   serverPath?: string;
   claudeCliName?: string;
+  antigravityCliName?: string;
   debug?: boolean;
   env?: NodeJS.ProcessEnv;
 } = {}): MCPTestClient {
   const {
     serverPath = DEFAULT_SERVER_PATH,
     claudeCliName = process.env.TEST_CLAUDE_CLI_NAME || '/tmp/claude-code-test-mock/claudeMocked',
+    antigravityCliName = process.env.TEST_ANTIGRAVITY_CLI_NAME || 'agy',
     debug = true,
     env = {},
   } = options;
@@ -166,6 +168,7 @@ export function createTestClient(options: {
     VITEST: '',  // Unset so server starts
     MCP_CLAUDE_DEBUG: debug ? 'true' : '',
     CLAUDE_CLI_NAME: claudeCliName,
+    ANTIGRAVITY_CLI_NAME: antigravityCliName,
     AGENT_BRIDGE_PROCESS_REGISTRY_DIR: process.env.AGENT_BRIDGE_PROCESS_REGISTRY_DIR || '/tmp/agent-bridge-mcp-test-registry',
     ...env,
   });

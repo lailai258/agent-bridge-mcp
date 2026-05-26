@@ -373,5 +373,24 @@ describe('Argument Validation Tests', () => {
         })
       ).rejects.toThrow('reasoning_effort is not supported for opencode.');
     });
+
+    it('should reject reasoning_effort for Antigravity runtime requests', async () => {
+      await setupServer();
+      const handler = handlers.get('callTool')!;
+
+      await expect(
+        handler({
+          params: {
+            name: 'run',
+            arguments: {
+              prompt: 'test',
+              workFolder: '/tmp',
+              model: 'antigravity',
+              reasoning_effort: 'high',
+            }
+          }
+        })
+      ).rejects.toThrow('reasoning_effort is not supported for antigravity.');
+    });
   });
 });

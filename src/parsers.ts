@@ -59,6 +59,7 @@ interface PendingForgeTool {
 const PEEK_TOOL_SUMMARY_MAX_LENGTH = 200;
 const FORGE_EXECUTE_PATTERN = /^● \[[^\]]+\] Execute \[([^\]]*)\]\s+(.+)$/;
 const FORGE_FINISHED_PATTERN = /^● \[[^\]]+\] Finished(?:\s+\S+)?\s*$/;
+const ANTIGRAVITY_WARNING_PATTERN = /^Warning:\s+/;
 
 function isGeminiAssistantMessageEvent(parsed: any): boolean {
   return parsed.type === 'message' && parsed.role === 'assistant' && typeof parsed.content === 'string';
@@ -353,6 +354,15 @@ function extractPeekEventsFromParsedEvent(agent: PeekAgent, parsed: any, observe
   return [];
 }
 
+function normalizeAntigravityMessage(stdout: string): string {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() && !ANTIGRAVITY_WARNING_PATTERN.test(line.trim()))
+    .join('\n')
+    .trim();
+}
+
 export class PeekEventExtractor {
   private pending = '';
   private geminiAssistantBuffer = '';
@@ -405,6 +415,9 @@ export class PeekEventExtractor {
   private extractLines(lines: string[], observedAt: string): PeekEvent[] {
     if (this.agent === 'forge') {
       return this.extractForgeLines(lines, observedAt);
+    }
+    if (this.agent === 'antigravity') {
+      return this.extractAntigravityLines(lines, observedAt);
     }
 
     const events: PeekEvent[] = [];
@@ -475,6 +488,14 @@ export class PeekEventExtractor {
     }
 
     return events;
+  }
+
+  private extractAntigravityLines(lines: string[], observedAt: string): PeekEvent[] {
+    const text = normalizeAntigravityMessage(lines.join('\n'));
+    if (!text) {
+      return [];
+    }
+    return [{ kind: 'message', ts: observedAt, text }];
   }
 
   private extractForgeMessage(line: string, prefix: string): string | null {
@@ -968,4 +989,15 @@ export function parseOpenCodeOutput(stdout: string): any {
   }
 
   return null;
+}
+
+export function parseAntigravityOutput(stdout: string): any {
+  if (!stdout) return null;
+
+  const message = normalizeAntigravityMessage(stdout);
+  if (!message) {
+    return null;
+  }
+
+  return { message };
 }

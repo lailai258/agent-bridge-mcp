@@ -1,6 +1,6 @@
 # agent-bridge-mcp
 
-> MCP-only 服务，用于把本机 Claude、Codex、Gemini、Forge 和 OpenCode CLI 作为后台任务运行。
+> MCP-only 服务，用于把本机 Claude、Codex、Gemini、Forge、OpenCode 和 Antigravity CLI 作为后台任务运行。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-339933)](./package.json)
@@ -8,7 +8,7 @@
 
 [English](./README.md) | **简体中文**
 
-`agent-bridge-mcp` 允许 MCP 客户端把任务委派给本机已经安装的 AI 编程 CLI。它不直接调用模型 API，而是启动本机 Claude、Codex、Gemini、Forge 或 OpenCode CLI 后台子进程，立即返回 PID，并提供 MCP 工具来查询、等待、观察、终止和清理这些任务。
+`agent-bridge-mcp` 允许 MCP 客户端把任务委派给本机已经安装的 AI 编程 CLI。它不直接调用模型 API，而是启动本机 Claude、Codex、Gemini、Forge、OpenCode 或 Antigravity CLI 后台子进程，立即返回 PID，并提供 MCP 工具来查询、等待、观察、终止和清理这些任务。
 
 包内唯一可执行入口是：
 
@@ -26,7 +26,7 @@ agent-bridge-mcp
 - 立即返回 PID，而不是等待任务结束。
 - 后续按需查询 compact 或 verbose 结果。
 - 使用 `peek` 观察短时间窗口内的实时自然语言输出。
-- 用同一套 MCP 契约屏蔽 Claude、Codex、Gemini、Forge、OpenCode 的参数差异。
+- 用同一套 MCP 契约屏蔽 Claude、Codex、Gemini、Forge、OpenCode、Antigravity 的参数差异。
 - 运行中的进程句柄保存在当前 server 内存中，同时持久化轻量进程元数据和日志路径，支持 server 重启后恢复查询。
 
 ## 它不是什么
@@ -48,6 +48,7 @@ server 可以启动以下本机工具：
 - Gemini CLI
 - Forge CLI
 - OpenCode CLI
+- Antigravity CLI
 
 调用 `run` 前，你需要自行安装、配置并登录计划使用的 CLI。`doctor` 只检查二进制是否能解析和执行，不检查账号状态。
 
@@ -189,7 +190,7 @@ server 会立即返回：
 
 可选：
 
-- `model`：标准模型、别名或 OpenCode 动态模型。
+- `model`：标准模型、别名或 OpenCode 动态模型。使用 `antigravity` 选择 Antigravity CLI。
 - `reasoning_effort`：只支持 Claude 和 Codex。
 - `session_id`：在所选 CLI 支持的情况下恢复已有会话。
 
@@ -264,7 +265,7 @@ server 会立即返回：
 
 ### `models`
 
-列出支持的模型名、模型别名和 OpenCode 动态模型语法。
+列出支持的模型名、模型别名、Antigravity 入口和 OpenCode 动态模型语法。
 
 ## 模型
 
@@ -313,6 +314,12 @@ OpenCode：
 - `opencode`
 - `oc-<provider/model>`
 
+Antigravity：
+
+- `antigravity`
+
+`antigravity` 表示选择 Antigravity CLI agent。本集成不会向 `agy` 传递模型选择参数。
+
 OpenCode 动态模型示例：
 
 ```json
@@ -342,6 +349,7 @@ OpenCode DeepSeek v4 Pro 示例：
 - Gemini：不支持
 - Forge：不支持
 - OpenCode：不支持
+- Antigravity：不支持
 
 不合法的组合会在启动子进程前被拒绝。
 
@@ -354,6 +362,7 @@ OpenCode DeepSeek v4 Pro 示例：
 - Gemini：resume flag。
 - Forge：conversation ID。
 - OpenCode：`--session`。
+- Antigravity：print 模式下使用 `--conversation <session_id>`。
 
 具体会话行为仍取决于已安装 CLI 的版本和它自己的存储模型。
 
@@ -390,6 +399,7 @@ Gemini CLI 可以在 prompt 中引用图片，例如 `@image.png`。将 `workFol
 - `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
+- `ANTIGRAVITY_CLI_NAME`
 
 变量值可以是简单命令名或绝对路径。相对路径，例如 `./claude` 或 `tools/codex`，会被拒绝。
 
@@ -410,7 +420,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode
+Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 ```
 
 核心模块：
@@ -420,7 +430,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 - [src/process-registry.ts](./src/process-registry.ts)：持久化进程元数据和 stdout/stderr 日志路径。
 - [src/cli-builder.ts](./src/cli-builder.ts)：把 `run` 输入转换为安全的 CLI 参数数组。
 - [src/cli-utils.ts](./src/cli-utils.ts)：CLI 路径解析和 doctor 状态。
-- [src/model-catalog.ts](./src/model-catalog.ts)：模型列表、别名和 OpenCode 动态模型元数据。
+- [src/model-catalog.ts](./src/model-catalog.ts)：模型列表、别名、Antigravity 入口和 OpenCode 动态模型元数据。
 - [src/parsers.ts](./src/parsers.ts)：输出解析和 peek 事件提取。
 - [src/process-result.ts](./src/process-result.ts)：compact / verbose 结果整形。
 - [src/peek.ts](./src/peek.ts)：peek 参数校验和响应辅助。

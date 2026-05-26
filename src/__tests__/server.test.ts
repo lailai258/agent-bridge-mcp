@@ -246,6 +246,50 @@ describe('ClaudeCodeServer Unit Tests', () => {
     });
   });
 
+  describe('findAntigravityCli function', () => {
+    it('should fallback to PATH for Antigravity when no override is configured', async () => {
+      delete process.env.ANTIGRAVITY_CLI_NAME;
+      mockHomedir.mockReturnValue('/home/user');
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/usr/bin/agy') return undefined;
+        throw new Error('not executable');
+      });
+      process.env.PATH = '/usr/bin';
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const findAntigravityCli = module.default?.findAntigravityCli || module.findAntigravityCli;
+
+      expect(findAntigravityCli()).toBe('agy');
+    });
+
+    it('should use custom name from ANTIGRAVITY_CLI_NAME', async () => {
+      process.env.ANTIGRAVITY_CLI_NAME = 'agy-custom';
+      mockHomedir.mockReturnValue('/home/user');
+      mockAccessSync.mockImplementation((filePath) => {
+        if (filePath === '/usr/bin/agy-custom') return undefined;
+        throw new Error('not executable');
+      });
+      process.env.PATH = '/usr/bin';
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const findAntigravityCli = module.default?.findAntigravityCli || module.findAntigravityCli;
+
+      expect(findAntigravityCli()).toBe('agy-custom');
+    });
+
+    it('should throw error for relative paths in ANTIGRAVITY_CLI_NAME', async () => {
+      process.env.ANTIGRAVITY_CLI_NAME = './relative/path/agy';
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const findAntigravityCli = module.default?.findAntigravityCli || module.findAntigravityCli;
+
+      expect(() => findAntigravityCli()).toThrow('Invalid ANTIGRAVITY_CLI_NAME: Relative paths are not allowed');
+    });
+  });
+
   describe('spawnAsync function', () => {
     let mockProcess: any;
     
@@ -397,6 +441,28 @@ describe('ClaudeCodeServer Unit Tests', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Setup] Using OpenCode CLI command/path:')
+      );
+    });
+
+    it('should include Antigravity in setup logging', async () => {
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockReturnValue(true);
+
+      vi.mocked(Server).mockImplementation(function(this: any) {
+        this.setRequestHandler = vi.fn();
+        this.connect = vi.fn();
+        this.close = vi.fn();
+        this.onerror = undefined;
+        return this;
+      });
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const { ClaudeCodeServer } = module;
+      new ClaudeCodeServer();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Setup] Using Antigravity CLI command/path:')
       );
     });
 
@@ -839,6 +905,56 @@ describe('ClaudeCodeServer Unit Tests', () => {
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.any(String),
         expect.arrayContaining(['-r', 'gemini-session-789']),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle session_id parameter for Antigravity using --conversation', async () => {
+      mockHomedir.mockReturnValue('/home/user');
+      mockExistsSync.mockReturnValue(true);
+
+      // Set up Server mock
+      setupServerMock();
+
+      const module = await import('../server.js');
+      // @ts-ignore
+      const { ClaudeCodeServer } = module;
+      const server = new ClaudeCodeServer();
+      const mockServerInstance = vi.mocked(Server).mock.results[0].value;
+
+      // Find the CallToolRequest handler
+      const callToolCall = mockServerInstance.setRequestHandler.mock.calls.find(
+        (call: any[]) => call[0].name === 'callTool'
+      );
+
+      const handler = callToolCall[1];
+
+      // Create mock process
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12352;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.stdout.on = vi.fn();
+      mockProcess.stderr.on = vi.fn();
+      mockProcess.kill = vi.fn();
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const result = await handler({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'test prompt',
+            workFolder: '/tmp',
+            model: 'antigravity',
+            session_id: 'antigravity-conversation-123'
+          }
+        }
+      });
+
+      // Verify spawn was called with --conversation flag for Antigravity
+      expect(mockSpawn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining(['--conversation', 'antigravity-conversation-123']),
         expect.any(Object)
       );
     });

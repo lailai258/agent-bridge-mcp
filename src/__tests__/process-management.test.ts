@@ -481,6 +481,65 @@ describe('Process Management Tests', () => {
       expect(JSON.stringify(response)).not.toContain('stderr should be ignored');
     });
 
+    it('should peek Antigravity plain-text messages and filter warnings', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12355;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'antigravity peek prompt',
+            workFolder: '/tmp',
+            model: 'antigravity',
+          }
+        }
+      });
+
+      const peekPromise = callToolHandler!({
+        params: {
+          name: 'peek',
+          arguments: {
+            pids: [12355],
+            peek_time_sec: 1,
+          }
+        }
+      });
+
+      setTimeout(() => {
+        mockProcess.stdout.emit('data', 'Warning: conversation "missing" not found.\n');
+        mockProcess.stdout.emit('data', 'Visible Antigravity text\n');
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const result = await peekPromise;
+      const response = JSON.parse(result.content[0].text);
+
+      expect(response.processes).toHaveLength(1);
+      expect(response.processes[0]).toMatchObject({
+        pid: 12355,
+        agent: 'antigravity',
+        status: 'completed',
+        events: [
+          {
+            kind: 'message',
+            ts: expect.any(String),
+            text: 'Visible Antigravity text',
+          },
+        ],
+        truncated: false,
+        error: null,
+      });
+    });
+
     it('should handle process with model parameter', async () => {
       const { handlers } = await setupServer();
       
@@ -899,6 +958,57 @@ Unicodeテスト: 🎌 🗾 ✨
       expect(processInfo.exitCode).toBe(0);
       expect(processInfo.agentOutput).toEqual(completedJsonOutput);
       expect(processInfo.session_id).toBe('completed-session-456');
+    });
+
+    it('should parse Antigravity plain-text output', async () => {
+      const { handlers } = await setupServer();
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.pid = 12356;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      mockSpawn.mockReturnValue(mockProcess);
+
+      const callToolHandler = handlers.get('callTool')!;
+
+      await callToolHandler!({
+        params: {
+          name: 'run',
+          arguments: {
+            prompt: 'test antigravity prompt',
+            workFolder: '/tmp',
+            model: 'antigravity'
+          }
+        }
+      });
+
+      mockProcess.stdout.emit('data', 'Warning: conversation "missing" not found.\nAntigravity completed\n');
+      mockProcess.emit('close', 0);
+
+      const result = await callToolHandler!({
+        params: {
+          name: 'get_result',
+          arguments: {
+            pid: 12356
+          }
+        }
+      });
+
+      const processInfo = JSON.parse(result.content[0].text);
+      expect(processInfo).toMatchObject({
+        pid: 12356,
+        agent: 'antigravity',
+        status: 'completed',
+        exitCode: 0,
+        model: 'antigravity',
+        agentOutput: {
+          message: 'Antigravity completed',
+        },
+      });
+      expect(processInfo).not.toHaveProperty('stdout');
+      expect(processInfo).not.toHaveProperty('stderr');
     });
 
     it('should throw error for non-existent PID', async () => {

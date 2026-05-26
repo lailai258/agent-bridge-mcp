@@ -1,6 +1,6 @@
 # agent-bridge-mcp
 
-> MCP-only server for running local Claude, Codex, Gemini, Forge, and OpenCode CLI agents as background jobs.
+> MCP-only server for running local Claude, Codex, Gemini, Forge, OpenCode, and Antigravity CLI agents as background jobs.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-339933)](./package.json)
@@ -8,7 +8,7 @@
 
 **English** | [简体中文](./README.zh-CN.md)
 
-`agent-bridge-mcp` lets an MCP client delegate work to AI coding CLIs already installed on your machine. It does not call model APIs directly. Instead, it starts local Claude, Codex, Gemini, Forge, or OpenCode CLI processes in the background, returns a PID immediately, and exposes MCP tools to inspect, wait for, peek at, terminate, and clean up those jobs.
+`agent-bridge-mcp` lets an MCP client delegate work to AI coding CLIs already installed on your machine. It does not call model APIs directly. Instead, it starts local Claude, Codex, Gemini, Forge, OpenCode, or Antigravity CLI processes in the background, returns a PID immediately, and exposes MCP tools to inspect, wait for, peek at, terminate, and clean up those jobs.
 
 The package has one executable entry point:
 
@@ -26,7 +26,7 @@ This server bridges that gap:
 - Return immediately with a PID instead of waiting for completion.
 - Query compact or verbose results later.
 - Observe short windows of live natural-language output with `peek`.
-- Use one MCP contract across Claude, Codex, Gemini, Forge, and OpenCode.
+- Use one MCP contract across Claude, Codex, Gemini, Forge, OpenCode, and Antigravity.
 - Keep live process handles in memory and persist lightweight process metadata/log paths for recovery across MCP server restarts.
 
 ## What It Is Not
@@ -48,6 +48,7 @@ The server can launch these local tools:
 - Gemini CLI
 - Forge CLI
 - OpenCode CLI
+- Antigravity CLI
 
 You must install, configure, and sign in to the CLIs you plan to use before calling `run`. `doctor` only checks whether binaries can be resolved and executed; it does not check account state.
 
@@ -189,7 +190,7 @@ Prompt input, exactly one required:
 
 Optional:
 
-- `model`: standard model, alias, or OpenCode dynamic model.
+- `model`: standard model, alias, or OpenCode dynamic model. Use `antigravity` to select Antigravity CLI.
 - `reasoning_effort`: supported only for Claude and Codex.
 - `session_id`: resume an existing CLI session where the selected CLI supports it.
 
@@ -264,7 +265,7 @@ It does not verify login state, terms acceptance, model permissions, or network 
 
 ### `models`
 
-Lists supported model names, aliases, and OpenCode dynamic model syntax.
+Lists supported model names, aliases, Antigravity entrypoint, and OpenCode dynamic model syntax.
 
 ## Models
 
@@ -313,6 +314,12 @@ OpenCode:
 - `opencode`
 - `oc-<provider/model>`
 
+Antigravity:
+
+- `antigravity`
+
+`antigravity` selects the Antigravity CLI agent. This integration does not pass a model flag to `agy`.
+
 Example dynamic OpenCode model:
 
 ```json
@@ -342,6 +349,7 @@ Example OpenCode DeepSeek v4 Pro model:
 - Gemini: not supported
 - Forge: not supported
 - OpenCode: not supported
+- Antigravity: not supported
 
 Invalid combinations are rejected before launching the child process.
 
@@ -354,6 +362,7 @@ The optional `session_id` parameter is passed to the selected CLI using that CLI
 - Gemini: resume flag.
 - Forge: conversation ID.
 - OpenCode: `--session`.
+- Antigravity: `--conversation <session_id>` in print mode.
 
 Session behavior still depends on the installed CLI version and its own storage model.
 
@@ -390,6 +399,7 @@ Override a CLI command or absolute path with environment variables:
 - `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
+- `ANTIGRAVITY_CLI_NAME`
 
 Values may be simple command names or absolute paths. Relative paths such as `./claude` or `tools/codex` are rejected.
 
@@ -410,7 +420,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode
+Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 ```
 
 Core modules:
@@ -420,7 +430,7 @@ Core modules:
 - [src/process-registry.ts](./src/process-registry.ts): persisted process metadata and stdout/stderr log paths.
 - [src/cli-builder.ts](./src/cli-builder.ts): converts `run` input into safe CLI argument arrays.
 - [src/cli-utils.ts](./src/cli-utils.ts): CLI path resolution and doctor status.
-- [src/model-catalog.ts](./src/model-catalog.ts): model lists, aliases, and OpenCode dynamic model metadata.
+- [src/model-catalog.ts](./src/model-catalog.ts): model lists, aliases, Antigravity entrypoint, and OpenCode dynamic model metadata.
 - [src/parsers.ts](./src/parsers.ts): output parsers and peek event extraction.
 - [src/process-result.ts](./src/process-result.ts): compact and verbose result shaping.
 - [src/peek.ts](./src/peek.ts): peek validation and response helpers.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor, PeekMessageExtractor } from '../parsers.js';
+import { parseAntigravityOutput, parseCodexOutput, parseClaudeOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor, PeekMessageExtractor } from '../parsers.js';
 
 describe('parseCodexOutput', () => {
   it('should parse basic Codex output with message and session_id', () => {
@@ -180,6 +180,18 @@ describe('PeekMessageExtractor', () => {
 
     expect(extractor.push(output, ts)).toEqual([
       { ts, text: 'OpenCode visible text' },
+    ]);
+  });
+
+  it('extracts Antigravity plain text events and filters warnings', () => {
+    const extractor = new PeekMessageExtractor('antigravity');
+    const output = [
+      'Warning: conversation "missing" not found.',
+      'Visible Antigravity text',
+    ].join('\n') + '\n';
+
+    expect(extractor.push(output, ts)).toEqual([
+      { ts, text: 'Visible Antigravity text' },
     ]);
   });
 
@@ -740,5 +752,24 @@ describe('parseOpenCodeOutput', () => {
   it('returns null when no useful OpenCode events exist', () => {
     expect(parseOpenCodeOutput('{"type":"unknown"}')).toBeNull();
     expect(parseOpenCodeOutput('')).toBeNull();
+  });
+});
+
+describe('parseAntigravityOutput', () => {
+  it('parses plain text output', () => {
+    expect(parseAntigravityOutput('Hello from Antigravity\n')).toEqual({
+      message: 'Hello from Antigravity',
+    });
+  });
+
+  it('filters warning lines while preserving readable message text', () => {
+    expect(parseAntigravityOutput('Warning: conversation "missing" not found.\nFinal answer\n')).toEqual({
+      message: 'Final answer',
+    });
+  });
+
+  it('returns null for empty or warning-only output', () => {
+    expect(parseAntigravityOutput('')).toBeNull();
+    expect(parseAntigravityOutput('Warning: conversation "missing" not found.\n')).toBeNull();
   });
 });

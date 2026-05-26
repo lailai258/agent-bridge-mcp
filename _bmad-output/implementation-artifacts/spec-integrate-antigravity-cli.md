@@ -2,7 +2,8 @@
 title: '集成 Antigravity CLI 到 MCP 后台 agent 运行链路'
 type: 'feature'
 created: '2026-05-26'
-status: 'draft'
+status: 'done'
+baseline_commit: '54745eb9bee3cc91e2d4d8e75f5764f6a0deadb7'
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/docs/architecture.md'
@@ -55,13 +56,13 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/cli-utils.ts` -- 将 `CliBinaryName`、`CliPaths`、`CliDoctorStatus` 扩展为包含 `antigravity`；新增默认命令 `agy` 和环境变量 `ANTIGRAVITY_CLI_NAME` -- 让 doctor 和启动路径解析复用现有安全边界。
-- [ ] `src/cli-builder.ts` -- 扩展 agent 类型和模型路由；当 raw model 为 `antigravity` 时构造 `agy` print 模式参数；有 `session_id` 时添加 `--conversation`；传入 `reasoning_effort` 时抛错 -- 保持统一 run 入参语义。
-- [ ] `src/model-catalog.ts` -- 新增 Antigravity 模型列表和 `models` payload 字段；更新模型描述 -- 让 MCP 客户端可发现 `model: "antigravity"`。
-- [ ] `src/process-service.ts`、`src/parsers.ts` -- 新增 `parseAntigravityOutput(stdout)` 并接入 `parseAgentOutput`；输出为空返回 `null`，非空返回 `{ message }` -- 适配 `agy --print` 的纯文本输出。
-- [ ] `src/app/mcp.ts`、`src/server.ts` -- 初始化 Antigravity CLI path，更新 setup 日志、配置错误扫描、tool 描述、`reasoning_effort` 和 `session_id` 文案 -- 保证 MCP 契约描述与运行时一致。
-- [ ] `src/__tests__` -- 补充或更新构造、doctor、parser、MCP contract、process-management/server 测试 -- 防止新增 agent 破坏现有五类 agent。
-- [ ] `README.md`、`README.zh-CN.md`、`docs/*` -- 同步支持列表、环境变量、模型目录、非目标和测试说明 -- 保证发布文档不落后于代码。
+- [x] `src/cli-utils.ts` -- 将 `CliBinaryName`、`CliPaths`、`CliDoctorStatus` 扩展为包含 `antigravity`；新增默认命令 `agy` 和环境变量 `ANTIGRAVITY_CLI_NAME` -- 让 doctor 和启动路径解析复用现有安全边界。
+- [x] `src/cli-builder.ts` -- 扩展 agent 类型和模型路由；当 raw model 为 `antigravity` 时构造 `agy` print 模式参数；有 `session_id` 时添加 `--conversation`；传入 `reasoning_effort` 时抛错 -- 保持统一 run 入参语义。
+- [x] `src/model-catalog.ts` -- 新增 Antigravity 模型列表和 `models` payload 字段；更新模型描述 -- 让 MCP 客户端可发现 `model: "antigravity"`。
+- [x] `src/process-service.ts`、`src/parsers.ts` -- 新增 `parseAntigravityOutput(stdout)` 并接入 `parseAgentOutput`；输出为空返回 `null`，非空返回 `{ message }` -- 适配 `agy --print` 的纯文本输出。
+- [x] `src/app/mcp.ts`、`src/server.ts` -- 初始化 Antigravity CLI path，更新 setup 日志、配置错误扫描、tool 描述、`reasoning_effort` 和 `session_id` 文案 -- 保证 MCP 契约描述与运行时一致。
+- [x] `src/__tests__` -- 补充或更新构造、doctor、parser、MCP contract、process-management/server 测试 -- 防止新增 agent 破坏现有五类 agent。
+- [x] `README.md`、`README.zh-CN.md`、`docs/*` -- 同步支持列表、环境变量、模型目录、非目标和测试说明 -- 保证发布文档不落后于代码。
 
 **Acceptance Criteria:**
 - Given Antigravity CLI 在 PATH 中可执行, when 调用 `doctor`, then 返回 payload 包含 `antigravity.available: true` 且不检查登录态。
@@ -72,6 +73,8 @@ context:
 - Given 现有 Claude/Codex/Gemini/Forge/OpenCode 测试输入, when 运行单元测试, then 现有 agent 命令构造、输出解析和 MCP 契约保持兼容。
 
 ## Spec Change Log
+
+- 2026-05-26 review: step-04 本地审查发现 MCP contract 测试只断言 Antigravity `reasoning_effort` 文案，可能漏掉 OpenCode 不支持说明的回归保护；已补强测试断言同时覆盖 OpenCode、Antigravity 和 `do not support reasoning_effort`，无 spec 意图变更。
 
 ## Design Notes
 
@@ -89,10 +92,70 @@ agy --dangerously-skip-permissions --add-dir <cwd> --conversation <id> --print-t
 ## Verification
 
 **Commands:**
-- `npm run build` -- expected: TypeScript 编译通过。
-- `npm run test:unit` -- expected: 单元测试通过，新增 Antigravity 覆盖项通过。
-- `npm test` -- expected: MCP stdio 契约和集成测试通过。
+- `npm run build` -- expected: TypeScript 编译通过。actual: 通过。
+- `npm run test:unit` -- expected: 单元测试通过，新增 Antigravity 覆盖项通过。actual: 10 个测试文件、231 个测试通过。
+- `npm test` -- expected: MCP stdio 契约和集成测试通过。actual: 11 个测试文件，242 个通过、1 个跳过。
 
 **Manual checks (if no CLI):**
 - 检查 `models` tool 返回包含 `antigravity`，且 README/中文 README 与 docs 中的支持列表一致。
 - 检查 `run` tool 描述仍强调后台 PID 语义，没有新增人类 CLI 用法。
+
+## Suggested Review Order
+
+**MCP Entry Contract**
+
+- 首先确认 server 初始化注入第六类 CLI。
+  [`mcp.ts:91`](../../src/app/mcp.ts#L91)
+
+- 核对 tool schema 文案与运行时能力一致。
+  [`mcp.ts:150`](../../src/app/mcp.ts#L150)
+
+**Command Routing**
+
+- 查看 Antigravity 如何成为独立 agent 路由。
+  [`cli-builder.ts:20`](../../src/cli-builder.ts#L20)
+
+- 确认 Antigravity 明确拒绝 `reasoning_effort`。
+  [`cli-builder.ts:105`](../../src/cli-builder.ts#L105)
+
+- 审查 `agy --print` 参数顺序和会话映射。
+  [`cli-builder.ts:274`](../../src/cli-builder.ts#L274)
+
+**Discovery And Models**
+
+- 核对 doctor 类型和 path 解析新增字段。
+  [`cli-utils.ts:22`](../../src/cli-utils.ts#L22)
+
+- 确认默认命令 `agy` 和环境变量配置。
+  [`cli-utils.ts:216`](../../src/cli-utils.ts#L216)
+
+- 检查 `models` payload 暴露 Antigravity 入口。
+  [`model-catalog.ts:28`](../../src/model-catalog.ts#L28)
+
+**Output Parsing**
+
+- 查看 warning 过滤与纯文本归一化策略。
+  [`parsers.ts:357`](../../src/parsers.ts#L357)
+
+- 确认 peek 可提取 Antigravity 普通文本。
+  [`parsers.ts:419`](../../src/parsers.ts#L419)
+
+- 确认 `get_result`/`wait` 使用 Antigravity parser。
+  [`process-service.ts:84`](../../src/process-service.ts#L84)
+
+**Tests And Docs**
+
+- 命令构造测试锁定 `agy --print` 参数。
+  [`cli-builder.test.ts:700`](../../src/__tests__/cli-builder.test.ts#L700)
+
+- MCP 契约测试保护 schema 文案和模型发现。
+  [`mcp-contract.test.ts:165`](../../src/__tests__/mcp-contract.test.ts#L165)
+
+- 端到端 mock 覆盖 `run -> wait -> get_result`。
+  [`mcp-contract.test.ts:860`](../../src/__tests__/mcp-contract.test.ts#L860)
+
+- README 说明用户可见模型、会话和环境变量。
+  [`README.md:317`](../../README.md#L317)
+
+- 工具契约文档说明 Antigravity 不暴露模型 flag。
+  [`mcp-tool-contracts.md:259`](../../docs/mcp-tool-contracts.md#L259)

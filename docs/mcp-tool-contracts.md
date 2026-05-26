@@ -36,7 +36,7 @@
 
 可选参数：
 
-- `model`：模型名、模型别名或 OpenCode 动态模型格式。
+- `model`：模型名、模型别名或 OpenCode 动态模型格式；`antigravity` 表示选择 Antigravity CLI。
 - `reasoning_effort`：Claude 与 Codex 的推理强度。
 - `session_id`：恢复对应 CLI 的已有会话。
 
@@ -47,7 +47,7 @@
 - `reasoning_effort` 只支持 Claude 和 Codex。
 - Claude 支持 `low`、`medium`、`high`、`xhigh`、`max`。
 - Codex 支持 `low`、`medium`、`high`、`xhigh`。
-- Gemini、Forge、OpenCode 不支持 `reasoning_effort`。
+- Gemini、Forge、OpenCode、Antigravity 不支持 `reasoning_effort`。
 
 ### 返回
 
@@ -207,7 +207,7 @@ verbose 结果额外包含：
 
 ## `doctor`
 
-检查 Claude、Codex、Gemini、Forge、OpenCode CLI 的二进制可用性与路径解析状态。
+检查 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI 的二进制可用性与路径解析状态。
 
 ### 参数
 
@@ -229,7 +229,7 @@ verbose 结果额外包含：
 
 ## `models`
 
-返回支持的模型、模型别名和 OpenCode 动态模型描述。
+返回支持的模型、模型别名、Antigravity 入口和 OpenCode 动态模型描述。
 
 ### 参数
 
@@ -255,6 +255,14 @@ oc-<provider/model>
 oc-opencode-go/deepseek-v4-pro
 oc-openai/gpt-5.4
 ```
+
+### Antigravity 入口
+
+```text
+antigravity
+```
+
+`antigravity` 选择 Antigravity CLI agent。本集成不向 `agy` 传递模型选择参数；会话恢复时将 `session_id` 映射为 `--conversation <session_id>`。
 
 ## 契约维护清单
 

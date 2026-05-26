@@ -77,6 +77,55 @@ fi
   return scriptPath;
 }
 
+function createAntigravityMockScript(dir: string, argsLogPath: string): string {
+  const scriptPath = join(dir, 'mock-agy');
+  writeFileSync(
+    scriptPath,
+    `#!/bin/bash
+set -euo pipefail
+
+log_file="${argsLogPath}"
+prompt=""
+conversation_id=""
+
+printf '%s\\n' "$*" >> "$log_file"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --add-dir)
+      shift 2
+      ;;
+    --conversation)
+      conversation_id="$2"
+      shift 2
+      ;;
+    --print-timeout)
+      shift 2
+      ;;
+    --print)
+      prompt="$2"
+      shift 2
+      ;;
+    --dangerously-skip-permissions)
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$conversation_id" ]]; then
+  printf 'Warning: conversation "%s" not found.\\n' "$conversation_id"
+fi
+
+printf 'Antigravity: %s\\n' "$prompt"
+`
+  );
+  chmodSync(scriptPath, 0o755);
+  return scriptPath;
+}
+
 describe('MCP Contract Tests', () => {
   let client: MCPTestClient;
   let testDir: string;
@@ -124,12 +173,16 @@ describe('MCP Contract Tests', () => {
       'workFolder',
     ]);
     expect(runTool.description).toContain('OpenCode');
+    expect(runTool.description).toContain('Antigravity');
     expect(runTool.inputSchema.properties.model.description).toContain('opencode');
+    expect(runTool.inputSchema.properties.model.description).toContain('antigravity');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-<provider/model>');
     expect(runTool.inputSchema.properties.model.description).toContain('oc-opencode-go/deepseek-v4-pro');
-    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode do not support reasoning_effort');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('OpenCode');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('Antigravity');
+    expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
-      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, and OpenCode. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection.'
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Antigravity. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection. Antigravity maps this value to --conversation in print mode.'
     );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');
@@ -194,6 +247,7 @@ describe('MCP Contract Tests', () => {
       'gpt-5.2',
     ]);
     expect(modelsData.opencode).toEqual(['opencode']);
+    expect(modelsData.antigravity).toEqual(['antigravity']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');
 
     const doctorResponse = await client.callTool('doctor', {});
@@ -206,6 +260,7 @@ describe('MCP Contract Tests', () => {
       termsAcceptance: false,
     });
     expect(doctorData.claude.configuredCommand).toBe(process.env.TEST_CLAUDE_CLI_NAME);
+    expect(doctorData.antigravity.configuredCommand).toBe('agy');
 
     const runResponse = await client.callTool('run', {
       prompt: 'create a file called contract.txt with content "hello"',
@@ -800,6 +855,81 @@ printf '%s\n' '{"type":"system","session_id":"session-verbose-1"}'
         reasoning_effort: 'high',
       })
     ).rejects.toThrow(/reasoning_effort is not supported for opencode/i);
+  });
+
+  it('covers Antigravity end-to-end through the MCP process path', async () => {
+    await client.disconnect();
+
+    const antigravityArgsLogPath = join(testDir, 'antigravity-args.log');
+    const antigravityMockPath = createAntigravityMockScript(testDir, antigravityArgsLogPath);
+
+    client = createTestClient({
+      debug: false,
+      env: {
+        ANTIGRAVITY_CLI_NAME: antigravityMockPath,
+      },
+    });
+    await client.connect();
+
+    const runResponse = await client.callTool('run', {
+      prompt: 'hello antigravity',
+      workFolder: testDir,
+      model: 'antigravity',
+      session_id: 'conv-missing',
+    });
+    const runData = parseToolJson(runResponse);
+
+    expect(runData).toEqual({
+      pid: expect.any(Number),
+      status: 'started',
+      agent: 'antigravity',
+      message: expect.any(String),
+    });
+
+    const waitResponse = await client.callTool('wait', { pids: [runData.pid], timeout: 5 });
+    const waitData = parseToolJson(waitResponse);
+    const waitResult = expectCompletedWaitResponse(waitData);
+
+    expect(waitResult).toMatchObject({
+      pid: runData.pid,
+      agent: 'antigravity',
+      status: 'completed',
+      exitCode: 0,
+      model: 'antigravity',
+      agentOutput: {
+        message: 'Antigravity: hello antigravity',
+      },
+    });
+
+    const resultResponse = await client.callTool('get_result', { pid: runData.pid });
+    const resultData = parseToolJson(resultResponse);
+
+    expect(resultData).toMatchObject({
+      pid: runData.pid,
+      agent: 'antigravity',
+      status: 'completed',
+      model: 'antigravity',
+      agentOutput: {
+        message: 'Antigravity: hello antigravity',
+      },
+    });
+
+    const antigravityInvocations = readFileSync(antigravityArgsLogPath, 'utf-8').trim().split('\n');
+    expect(antigravityInvocations).toHaveLength(1);
+    expect(antigravityInvocations[0]).toContain('--dangerously-skip-permissions');
+    expect(antigravityInvocations[0]).toContain(`--add-dir ${testDir}`);
+    expect(antigravityInvocations[0]).toContain('--conversation conv-missing');
+    expect(antigravityInvocations[0]).toContain('--print-timeout 5m');
+    expect(antigravityInvocations[0]).toContain('--print hello antigravity');
+
+    await expect(
+      client.callTool('run', {
+        prompt: 'antigravity-invalid-reasoning',
+        workFolder: testDir,
+        model: 'antigravity',
+        reasoning_effort: 'high',
+      })
+    ).rejects.toThrow(/reasoning_effort is not supported for antigravity/i);
   });
 
   it('keeps key invalid-input errors stable', async () => {

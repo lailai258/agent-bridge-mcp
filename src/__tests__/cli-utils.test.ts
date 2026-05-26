@@ -21,6 +21,7 @@ describe('cli-utils doctor status', () => {
     delete process.env.GEMINI_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
+    delete process.env.ANTIGRAVITY_CLI_NAME;
     process.env.PATH = '/mock/bin:/usr/bin';
   });
 
@@ -64,6 +65,12 @@ describe('cli-utils doctor status', () => {
       available: false,
       lookup: 'path',
     });
+    expect(status.antigravity).toEqual({
+      configuredCommand: 'agy',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
   });
 
   it('does not mark non-executable PATH entries as available', async () => {
@@ -88,6 +95,12 @@ describe('cli-utils doctor status', () => {
     });
     expect(status.opencode).toEqual({
       configuredCommand: 'opencode',
+      resolvedPath: null,
+      available: false,
+      lookup: 'path',
+    });
+    expect(status.antigravity).toEqual({
+      configuredCommand: 'agy',
       resolvedPath: null,
       available: false,
       lookup: 'path',
@@ -202,5 +215,37 @@ describe('cli-utils doctor status', () => {
       lookup: 'env',
     });
     expect(findOpencodeCli()).toBe('opencode-custom');
+  });
+
+  it('supports Antigravity lookup via ANTIGRAVITY_CLI_NAME', async () => {
+    process.env.ANTIGRAVITY_CLI_NAME = 'agy-custom';
+    mockAccessSync.mockImplementation((filePath) => {
+      if (filePath === '/mock/bin/agy-custom') {
+        return undefined;
+      }
+      throw new Error('not executable');
+    });
+
+    const { getCliDoctorStatus, findAntigravityCli } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.antigravity).toEqual({
+      configuredCommand: 'agy-custom',
+      resolvedPath: '/mock/bin/agy-custom',
+      available: true,
+      lookup: 'env',
+    });
+    expect(findAntigravityCli()).toBe('agy-custom');
+  });
+
+  it('reports invalid Antigravity relative env paths as doctor errors', async () => {
+    process.env.ANTIGRAVITY_CLI_NAME = './relative/agy';
+
+    const { getCliDoctorStatus } = await import('../cli-utils.js');
+    const status = getCliDoctorStatus();
+
+    expect(status.antigravity.available).toBe(false);
+    expect(status.antigravity.lookup).toBe('env');
+    expect(status.antigravity.error).toContain('Invalid ANTIGRAVITY_CLI_NAME');
   });
 });

@@ -24,6 +24,7 @@ const DEFAULT_CLI_PATHS = {
   gemini: '/usr/bin/gemini',
   forge: '/usr/bin/forge',
   opencode: '/usr/bin/opencode',
+  antigravity: '/usr/bin/agy',
 };
 
 describe('cli-builder', () => {
@@ -117,6 +118,12 @@ describe('cli-builder', () => {
       );
       expect(() => getReasoningEffort('oc-opencode-go/deepseek-v4-pro', 'high')).toThrow(
         'reasoning_effort is not supported for opencode.'
+      );
+    });
+
+    it('should reject reasoning_effort for antigravity explicitly', () => {
+      expect(() => getReasoningEffort('antigravity', 'high')).toThrow(
+        'reasoning_effort is not supported for antigravity.'
       );
     });
   });
@@ -687,6 +694,65 @@ describe('cli-builder', () => {
           'openai/gpt-5.4',
           'resume prompt',
         ]);
+      });
+    });
+
+    describe('antigravity agent', () => {
+      it('should build Antigravity print mode command', () => {
+        const cmd = buildCliCommand({
+          prompt: 'test',
+          workFolder: '/tmp',
+          model: 'antigravity',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.agent).toBe('antigravity');
+        expect(cmd.cliPath).toBe('/usr/bin/agy');
+        expect(cmd.cwd).toBe('/tmp');
+        expect(cmd.resolvedModel).toBe('antigravity');
+        expect(cmd.args).toEqual([
+          '--dangerously-skip-permissions',
+          '--add-dir',
+          '/tmp',
+          '--print-timeout',
+          '5m',
+          '--print',
+          'test',
+        ]);
+      });
+
+      it('should build Antigravity print mode command with conversation resume', () => {
+        const cmd = buildCliCommand({
+          prompt: 'resume prompt',
+          workFolder: '/tmp',
+          model: 'antigravity',
+          session_id: 'conv-123',
+          cliPaths: DEFAULT_CLI_PATHS,
+        });
+
+        expect(cmd.args).toEqual([
+          '--dangerously-skip-permissions',
+          '--add-dir',
+          '/tmp',
+          '--conversation',
+          'conv-123',
+          '--print-timeout',
+          '5m',
+          '--print',
+          'resume prompt',
+        ]);
+      });
+
+      it('should reject reasoning_effort for Antigravity in command building', () => {
+        expect(() =>
+          buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model: 'antigravity',
+            reasoning_effort: 'high',
+            cliPaths: DEFAULT_CLI_PATHS,
+          })
+        ).toThrow('reasoning_effort is not supported for antigravity.');
       });
     });
   });

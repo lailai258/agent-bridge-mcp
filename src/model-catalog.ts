@@ -25,6 +25,7 @@ export const GEMINI_MODELS = [
 ] as const;
 export const FORGE_MODELS = ['forge'] as const;
 export const OPENCODE_MODELS = ['opencode'] as const;
+export const ANTIGRAVITY_MODELS = ['antigravity'] as const;
 
 export const MODEL_ALIASES: Record<string, string> = {
   'claude-ultra': 'opus',
@@ -53,12 +54,13 @@ export function getSupportedModelsDescription(): string {
     ...GEMINI_MODELS.map((model) => `"${model}"`),
     ...FORGE_MODELS.map((model) => `"${model}"`),
     ...OPENCODE_MODELS.map((model) => `"${model}"`),
+    ...ANTIGRAVITY_MODELS.map((model) => `"${model}"`),
     '"oc-<provider/model>"',
   ].join(', ');
 }
 
 export function getModelParameterDescription(): string {
-  return `The model to use. Aliases: "claude-ultra" (auto max effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS].map((model) => `"${model}"`).join(', ')}. OpenCode also accepts explicit dynamic models using "oc-<provider/model>", for example "oc-opencode-go/deepseek-v4-pro". "forge" is a provider key, not a Forge model family selector.`;
+  return `The model to use. Aliases: "claude-ultra" (auto max effort), "codex-ultra" (auto xhigh reasoning), "gemini-ultra". Standard: ${[...CLAUDE_MODELS, ...CODEX_MODELS, ...GEMINI_MODELS, ...FORGE_MODELS, ...OPENCODE_MODELS, ...ANTIGRAVITY_MODELS].map((model) => `"${model}"`).join(', ')}. OpenCode also accepts explicit dynamic models using "oc-<provider/model>", for example "oc-opencode-go/deepseek-v4-pro". "forge" is a provider key, not a Forge model family selector. "antigravity" selects the Antigravity CLI agent and does not expose a model flag in this integration.`;
 }
 
 export function getModelsPayload(): {
@@ -68,6 +70,7 @@ export function getModelsPayload(): {
   gemini: ReadonlyArray<string>;
   forge: ReadonlyArray<string>;
   opencode: ReadonlyArray<string>;
+  antigravity: ReadonlyArray<string>;
   dynamicModelBackends: {
     opencode: DynamicModelBackendDescription;
   };
@@ -79,6 +82,7 @@ export function getModelsPayload(): {
     gemini: GEMINI_MODELS,
     forge: FORGE_MODELS,
     opencode: OPENCODE_MODELS,
+    antigravity: ANTIGRAVITY_MODELS,
     dynamicModelBackends: {
       opencode: {
         explicitPrefix: 'oc-',

@@ -7,8 +7,9 @@ export const ALLOWED_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhig
 const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.';
+const ANTIGRAVITY_PRINT_TIMEOUT = '5m';
 
-type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode';
+type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'antigravity';
 
 interface ModelSelection {
   agent: Agent;
@@ -17,6 +18,9 @@ interface ModelSelection {
 }
 
 function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
+  if (model === 'antigravity') {
+    return 'antigravity';
+  }
   if (model === 'forge') {
     return 'forge';
   }
@@ -101,6 +105,9 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   if (model === 'opencode' || model.startsWith('oc-')) {
     throw new Error('reasoning_effort is not supported for opencode.');
   }
+  if (model === 'antigravity') {
+    throw new Error('reasoning_effort is not supported for antigravity.');
+  }
 
   const normalized = trimmed.toLowerCase();
   if (!ALLOWED_REASONING_EFFORTS.has(normalized)) {
@@ -111,6 +118,9 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   const agent = getStandardAgentForModel(model);
   if (agent === 'forge') {
     throw new Error('reasoning_effort is not supported for forge.');
+  }
+  if (agent === 'antigravity') {
+    throw new Error('reasoning_effort is not supported for antigravity.');
   }
   if (agent === 'gemini') {
     throw new Error(
@@ -261,6 +271,15 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push(prompt);
+  } else if (agent === 'antigravity') {
+    cliPath = options.cliPaths.antigravity;
+    args = ['--dangerously-skip-permissions', '--add-dir', cwd];
+
+    if (options.session_id && typeof options.session_id === 'string') {
+      args.push('--conversation', options.session_id);
+    }
+
+    args.push('--print-timeout', ANTIGRAVITY_PRINT_TIMEOUT, '--print', prompt);
   } else {
     cliPath = options.cliPaths.claude;
     args = ['--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose'];

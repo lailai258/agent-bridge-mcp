@@ -19,7 +19,7 @@ export interface CliBinaryStatus {
   error?: string;
 }
 
-export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode';
+export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'antigravity';
 
 export interface CliPaths {
   claude: string;
@@ -27,6 +27,7 @@ export interface CliPaths {
   gemini: string;
   forge: string;
   opencode: string;
+  antigravity: string;
 }
 
 export interface CliDoctorStatus {
@@ -41,6 +42,7 @@ export interface CliDoctorStatus {
   gemini: CliBinaryStatus;
   forge: CliBinaryStatus;
   opencode: CliBinaryStatus;
+  antigravity: CliBinaryStatus;
 }
 
 function getPathDelimiter(): string {
@@ -211,6 +213,14 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
+  if (name === 'antigravity') {
+    return {
+      envVarName: 'ANTIGRAVITY_CLI_NAME',
+      customCliName: process.env.ANTIGRAVITY_CLI_NAME,
+      defaultCliName: 'agy',
+    };
+  }
+
   return {
     envVarName: 'GEMINI_CLI_NAME',
     customCliName: process.env.GEMINI_CLI_NAME,
@@ -236,6 +246,7 @@ export function getCliDoctorStatus(): CliDoctorStatus {
     gemini: getCliBinaryStatus('gemini'),
     forge: getCliBinaryStatus('forge'),
     opencode: getCliBinaryStatus('opencode'),
+    antigravity: getCliBinaryStatus('antigravity'),
   };
 }
 
@@ -260,6 +271,12 @@ export function findForgeCli(): string {
 export function findOpencodeCli(): string {
   debugLog('[Debug] Attempting to find OpenCode CLI...');
   const status = getCliBinaryStatus('opencode');
+  return getCliCommandOrThrow(status);
+}
+
+export function findAntigravityCli(): string {
+  debugLog('[Debug] Attempting to find Antigravity CLI...');
+  const status = getCliBinaryStatus('antigravity');
   return getCliCommandOrThrow(status);
 }
 

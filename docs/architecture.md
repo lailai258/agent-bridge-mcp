@@ -17,7 +17,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode
+Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 ```
 
 ## 模块边界
@@ -60,6 +60,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 - 校验 `reasoning_effort` 的模型家族兼容性。
 - 为不同 CLI 构造参数数组。
 - 将 OpenCode 动态模型 `oc-<provider/model>` 映射为 `--model <provider/model>`。
+- 将 `model: "antigravity"` 映射为 Antigravity CLI 的 `agy --print` 非交互模式，不传递模型选择参数。
 
 ### CLI 可用性边界
 
@@ -78,7 +79,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode
 
 职责：
 
-- 解析 Claude、Codex、Gemini、Forge、OpenCode 的输出格式。
+- 解析 Claude、Codex、Gemini、Forge、OpenCode、Antigravity 的输出格式。
 - 构造 compact / verbose 结果。
 - 提取短窗口 `peek` 消息和规范化工具调用事件。
 - 限制 `peek` 返回内容，避免泄露原始工具输出。
@@ -126,8 +127,9 @@ completed/failed -> removed   cleanup_processes 清理
 - Gemini CLI
 - Forge CLI
 - OpenCode CLI
+- Antigravity CLI
 
-模型路由由 `src/cli-builder.ts` 和 `src/model-catalog.ts` 控制。OpenCode 的动态模型使用 `oc-<provider/model>` 格式映射为 OpenCode CLI 的 `--model <provider/model>`。
+模型路由由 `src/cli-builder.ts` 和 `src/model-catalog.ts` 控制。OpenCode 的动态模型使用 `oc-<provider/model>` 格式映射为 OpenCode CLI 的 `--model <provider/model>`；Antigravity 首版使用 `model: "antigravity"` 选择 CLI agent，并通过 `agy --dangerously-skip-permissions --add-dir <cwd> --print-timeout 5m --print <prompt>` 执行。
 
 ## 数据与持久化架构
 

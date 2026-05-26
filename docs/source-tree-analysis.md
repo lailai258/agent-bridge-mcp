@@ -65,7 +65,7 @@ agent-bridge-mcp/
 ### `src/__tests__/`
 
 **用途：** 单元测试、契约测试和 mock CLI。  
-**包含：** MCP stdio client、Claude/OpenCode/mock 工具、进程管理测试、输出解析测试、参数构造测试。  
+**包含：** MCP stdio client、Claude/OpenCode/Antigravity/mock 工具、进程管理测试、输出解析测试、参数构造测试。  
 **注意：** 外部 CLI 行为应使用 mock，不依赖真实 CLI 登录态。
 
 ### `docs/`

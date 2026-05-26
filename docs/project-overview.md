@@ -6,7 +6,7 @@
 
 ## 执行摘要
 
-`agent-bridge-mcp` 是一个只暴露 MCP server 能力的 Node.js 项目。它不直接调用模型 API，而是通过本机已安装并登录的 Claude、Codex、Gemini、Forge、OpenCode CLI 启动后台任务，并用 MCP tools 提供统一的运行、查询、等待、短窗口观察、终止、清理、诊断和模型发现能力。
+`agent-bridge-mcp` 是一个只暴露 MCP server 能力的 Node.js 项目。它不直接调用模型 API，而是通过本机已安装并登录的 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI 启动后台任务，并用 MCP tools 提供统一的运行、查询、等待、短窗口观察、终止、清理、诊断和模型发现能力。
 
 项目核心边界是 MCP tool 契约，不是人类交互式 CLI。包内唯一二进制入口是 `agent-bridge-mcp`，指向构建产物 `dist/bin/agent-bridge-mcp.js`。
 
@@ -33,12 +33,12 @@
 
 ## 核心能力
 
-- 通过 `run` 启动 Claude、Codex、Gemini、Forge、OpenCode CLI 后台任务，并立即返回 PID。
+- 通过 `run` 启动 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI 后台任务，并立即返回 PID。
 - 使用内存 `Map` 跟踪运行中进程句柄、状态、stdout、stderr、模型、工作目录、启动时间和退出码，并将进程元数据写入本地注册表。
 - 通过 `get_result` 和 `wait` 返回 compact 或 verbose 结果。
 - 通过 `peek` 在短观察窗口内提取自然语言消息和可选的规范化工具调用事件。
 - 通过 `doctor` 检查 CLI 二进制路径解析和可执行性，不检查登录态或模型权限。
-- 通过 `models` 暴露标准模型、别名和 OpenCode 动态模型格式。
+- 通过 `models` 暴露标准模型、别名、Antigravity 入口和 OpenCode 动态模型格式。
 
 ## 架构亮点
 
@@ -46,7 +46,7 @@
 - `src/process-service.ts` 是运行时状态边界：负责启动进程、等待、peek、kill 和 cleanup。
 - `src/cli-builder.ts` 是 CLI 参数构造边界：把 MCP `run` 参数转换成不同 CLI 的命令参数。
 - `src/parsers.ts` 和 `src/process-result.ts` 共同处理外部 CLI 输出解析和响应裁剪。
-- `src/model-catalog.ts` 集中维护模型列表、别名和 OpenCode 动态模型说明。
+- `src/model-catalog.ts` 集中维护模型列表、别名、Antigravity 入口和 OpenCode 动态模型说明。
 - 项目不使用数据库；server 重启后可从本地注册表恢复已记录 PID 的基础状态和日志内容。
 
 ## 开发概览
@@ -54,7 +54,7 @@
 ### 前置条件
 
 - Node.js 满足 `package.json` 的 `engines` 要求。
-- 本地按需安装并登录 Claude、Codex、Gemini、Forge、OpenCode CLI。
+- 本地按需安装并登录 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI。
 - 使用 npm 安装依赖。
 
 ### 快速开始
