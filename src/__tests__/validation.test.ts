@@ -311,7 +311,7 @@ describe('Argument Validation Tests', () => {
       ).rejects.toThrow(/reasoning_effort/i);
     });
 
-    it('should reject reasoning_effort for unsupported model families', async () => {
+    it('should reject removed Gemini models', async () => {
       await setupServer();
       const handler = handlers.get('callTool')!;
 
@@ -327,7 +327,7 @@ describe('Argument Validation Tests', () => {
             }
           }
         })
-      ).rejects.toThrow(/reasoning_effort/i);
+      ).rejects.toThrow('Gemini CLI support has been removed.');
     });
 
     it.each([

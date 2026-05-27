@@ -182,7 +182,7 @@ describe('MCP Contract Tests', () => {
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('Antigravity');
     expect(runTool.inputSchema.properties.reasoning_effort.description).toContain('do not support reasoning_effort');
     expect(runTool.inputSchema.properties.session_id.description).toBe(
-      'Optional session ID to resume a previous session. Supported for Claude, Codex, Gemini, Forge, OpenCode, and Antigravity. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection. Antigravity maps this value to --conversation in print mode.'
+      'Optional session ID to resume a previous session. Supported for Claude, Codex, Forge, OpenCode, and Antigravity. OpenCode resumes in-place via --session and may also be combined with explicit OpenCode model selection. Antigravity maps this value to --conversation in print mode.'
     );
 
     const getResultTool = tools.find((tool: any) => tool.name === 'get_result');
@@ -246,6 +246,7 @@ describe('MCP Contract Tests', () => {
       'gpt-5.3-codex-spark',
       'gpt-5.2',
     ]);
+    expect(modelsData).not.toHaveProperty('gemini');
     expect(modelsData.opencode).toEqual(['opencode']);
     expect(modelsData.antigravity).toEqual(['antigravity']);
     expect(modelsData.dynamicModelBackends.opencode.explicitPattern).toBe('oc-<provider/model>');

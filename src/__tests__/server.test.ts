@@ -859,56 +859,6 @@ describe('ClaudeCodeServer Unit Tests', () => {
       );
     });
 
-    it('should handle session_id parameter for Gemini using -r flag', async () => {
-      mockHomedir.mockReturnValue('/home/user');
-      mockExistsSync.mockReturnValue(true);
-
-      // Set up Server mock
-      setupServerMock();
-
-      const module = await import('../server.js');
-      // @ts-ignore
-      const { ClaudeCodeServer } = module;
-      const server = new ClaudeCodeServer();
-      const mockServerInstance = vi.mocked(Server).mock.results[0].value;
-
-      // Find the CallToolRequest handler
-      const callToolCall = mockServerInstance.setRequestHandler.mock.calls.find(
-        (call: any[]) => call[0].name === 'callTool'
-      );
-
-      const handler = callToolCall[1];
-
-      // Create mock process
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.pid = 12351;
-      mockProcess.stdout = new EventEmitter();
-      mockProcess.stderr = new EventEmitter();
-      mockProcess.stdout.on = vi.fn();
-      mockProcess.stderr.on = vi.fn();
-      mockProcess.kill = vi.fn();
-      mockSpawn.mockReturnValue(mockProcess);
-
-      const result = await handler({
-        params: {
-          name: 'run',
-          arguments: {
-            prompt: 'test prompt',
-            workFolder: '/tmp',
-            model: 'gemini-2.5-pro',
-            session_id: 'gemini-session-789'
-          }
-        }
-      });
-
-      // Verify spawn was called with -r flag for Gemini
-      expect(mockSpawn).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.arrayContaining(['-r', 'gemini-session-789']),
-        expect.any(Object)
-      );
-    });
-
     it('should handle session_id parameter for Antigravity using --conversation', async () => {
       mockHomedir.mockReturnValue('/home/user');
       mockExistsSync.mockReturnValue(true);

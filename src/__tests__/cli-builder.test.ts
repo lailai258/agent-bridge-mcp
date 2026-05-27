@@ -21,7 +21,6 @@ import {
 const DEFAULT_CLI_PATHS = {
   claude: '/usr/bin/claude',
   codex: '/usr/bin/codex',
-  gemini: '/usr/bin/gemini',
   forge: '/usr/bin/forge',
   opencode: '/usr/bin/opencode',
   antigravity: '/usr/bin/agy',
@@ -41,10 +40,6 @@ describe('cli-builder', () => {
 
     it('should resolve codex-ultra to gpt-5.5', () => {
       expect(resolveModelAlias('codex-ultra')).toBe('gpt-5.5');
-    });
-
-    it('should resolve gemini-ultra to gemini-3.1-pro-preview', () => {
-      expect(resolveModelAlias('gemini-ultra')).toBe('gemini-3.1-pro-preview');
     });
 
     it('should pass through non-alias model names', () => {
@@ -97,9 +92,9 @@ describe('cli-builder', () => {
       );
     });
 
-    it('should throw for unsupported model families', () => {
+    it('should reject removed Gemini models', () => {
       expect(() => getReasoningEffort('gemini-2.5-pro', 'high')).toThrow(
-        'reasoning_effort is only supported for Claude and Codex models.'
+        'Gemini CLI support has been removed.'
       );
     });
 
@@ -505,47 +500,16 @@ describe('cli-builder', () => {
       });
     });
 
-    describe('gemini agent', () => {
-      it('should build gemini command', () => {
-        const cmd = buildCliCommand({
-          prompt: 'test',
-          workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
-          cliPaths: DEFAULT_CLI_PATHS,
-        });
-
-        expect(cmd.agent).toBe('gemini');
-        expect(cmd.cliPath).toBe('/usr/bin/gemini');
-        expect(cmd.args).toContain('-y');
-        expect(cmd.args).toContain('--output-format');
-        expect(cmd.args).toContain('stream-json');
-        expect(cmd.args).toContain('--model');
-        expect(cmd.args).toContain('gemini-2.5-pro');
-      });
-
-      it('should build gemini command with session_id', () => {
-        const cmd = buildCliCommand({
-          prompt: 'test',
-          workFolder: '/tmp',
-          model: 'gemini-2.5-pro',
-          session_id: 'gem-789',
-          cliPaths: DEFAULT_CLI_PATHS,
-        });
-
-        expect(cmd.args).toContain('-r');
-        expect(cmd.args).toContain('gem-789');
-      });
-
-      it('should resolve gemini-ultra alias', () => {
-        const cmd = buildCliCommand({
-          prompt: 'test',
-          workFolder: '/tmp',
-          model: 'gemini-ultra',
-          cliPaths: DEFAULT_CLI_PATHS,
-        });
-
-        expect(cmd.agent).toBe('gemini');
-        expect(cmd.resolvedModel).toBe('gemini-3.1-pro-preview');
+    describe('removed gemini agent', () => {
+      it.each(['gemini-2.5-pro', 'gemini-ultra', ' gemini-2.5-pro '])('should reject Gemini model: %s', (model) => {
+        expect(() =>
+          buildCliCommand({
+            prompt: 'test',
+            workFolder: '/tmp',
+            model,
+            cliPaths: DEFAULT_CLI_PATHS,
+          })
+        ).toThrow('Gemini CLI support has been removed.');
       });
     });
 

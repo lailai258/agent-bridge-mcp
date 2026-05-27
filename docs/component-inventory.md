@@ -25,27 +25,27 @@
 ### `src/cli-builder.ts`
 
 - **职责：** 将 MCP `run` 输入转换为具体 CLI 命令。
-- **覆盖 CLI：** Claude、Codex、Gemini、Forge、OpenCode、Antigravity。
+- **覆盖 CLI：** Claude、Codex、Forge、OpenCode、Antigravity。
 - **关键校验：** `workFolder`、`prompt` / `prompt_file` 互斥、模型别名、OpenCode 动态模型、Antigravity 入口、`reasoning_effort` 支持范围。
 - **变更风险：** 高。任何 CLI 参数变化都需要同步测试。
 
 ### `src/cli-utils.ts`
 
 - **职责：** CLI 二进制解析、环境变量覆盖、可执行性检查、doctor 状态。
-- **支持环境变量：** `CLAUDE_CLI_NAME`、`CODEX_CLI_NAME`、`GEMINI_CLI_NAME`、`FORGE_CLI_NAME`、`OPENCODE_CLI_NAME`、`ANTIGRAVITY_CLI_NAME`。
+- **支持环境变量：** `CLAUDE_CLI_NAME`、`CODEX_CLI_NAME`、`FORGE_CLI_NAME`、`OPENCODE_CLI_NAME`、`ANTIGRAVITY_CLI_NAME`。
 - **安全边界：** 禁止相对路径形式的自定义 CLI 值。
 - **变更风险：** 中到高。会影响 server 初始化和 `doctor` 输出。
 
 ### `src/model-catalog.ts`
 
 - **职责：** 模型列表、别名、Antigravity 入口、OpenCode 动态模型说明。
-- **核心数据：** Claude/Codex/Gemini/Forge/OpenCode/Antigravity 标准入口和 `claude-ultra`、`codex-ultra`、`gemini-ultra` 别名。
+- **核心数据：** Claude/Codex/Forge/OpenCode/Antigravity 标准入口和 `claude-ultra`、`codex-ultra` 别名。
 - **变更风险：** 中。修改时需同步 README 和测试。
 
 ### `src/parsers.ts`
 
 - **职责：** 解析不同 CLI 的 stdout/stderr 输出，并提取 peek 事件。
-- **支持格式：** Claude stream-json、Codex JSONL、Gemini stream-json、Forge 文本摘要、OpenCode JSON 事件、Antigravity 纯文本输出。
+- **支持格式：** Claude stream-json、Codex JSONL、Forge 文本摘要、OpenCode JSON 事件、Antigravity 纯文本输出。
 - **安全边界：** `peek` 只能返回自然语言消息和规范化工具调用摘要，不返回原始 tool output。
 - **变更风险：** 高。输出解析必须容忍损坏行和非 JSON 内容。
 

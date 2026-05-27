@@ -256,66 +256,6 @@ describe('Process Management Tests', () => {
       });
     });
 
-    it('should peek Gemini assistant message events and exclude tool output', async () => {
-      const { handlers } = await setupServer();
-
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.pid = 12347;
-      mockProcess.stdout = new EventEmitter();
-      mockProcess.stderr = new EventEmitter();
-      mockProcess.kill = vi.fn();
-
-      mockSpawn.mockReturnValue(mockProcess);
-
-      const callToolHandler = handlers.get('callTool')!;
-      await callToolHandler!({
-        params: {
-          name: 'run',
-          arguments: {
-            prompt: 'gemini peek prompt',
-            workFolder: '/tmp',
-            model: 'gemini-2.5-pro',
-          }
-        }
-      });
-
-      const peekPromise = callToolHandler!({
-        params: {
-          name: 'peek',
-          arguments: {
-            pids: [12347],
-            peek_time_sec: 1,
-          }
-        }
-      });
-
-      setTimeout(() => {
-        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:42.294Z","role":"user","content":"hidden user text"}\n');
-        mockProcess.stdout.emit('data', '{"type":"message","timestamp":"2026-04-11T14:44:53.820Z","role":"assistant","content":"Visible Gemini text","delta":true}\n');
-        mockProcess.stdout.emit('data', '{"type":"tool_result","timestamp":"2026-04-11T14:45:03.011Z","status":"success","output":"secret command output"}\n');
-        mockProcess.emit('close', 0);
-      }, 10);
-
-      const result = await peekPromise;
-      const response = JSON.parse(result.content[0].text);
-
-      expect(response.processes).toHaveLength(1);
-      expect(response.processes[0]).toMatchObject({
-        pid: 12347,
-        agent: 'gemini',
-        status: 'completed',
-        events: [
-          {
-            kind: 'message',
-            ts: expect.any(String),
-            text: 'Visible Gemini text',
-          },
-        ],
-        truncated: false,
-        error: null,
-      });
-    });
-
     it('should include normalized tool_call events when requested', async () => {
       const { handlers } = await setupServer();
 

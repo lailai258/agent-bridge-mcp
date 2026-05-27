@@ -61,24 +61,6 @@ const FORGE_EXECUTE_PATTERN = /^● \[[^\]]+\] Execute \[([^\]]*)\]\s+(.+)$/;
 const FORGE_FINISHED_PATTERN = /^● \[[^\]]+\] Finished(?:\s+\S+)?\s*$/;
 const ANTIGRAVITY_WARNING_PATTERN = /^Warning:\s+/;
 
-function isGeminiAssistantMessageEvent(parsed: any): boolean {
-  return parsed.type === 'message' && parsed.role === 'assistant' && typeof parsed.content === 'string';
-}
-
-const GEMINI_STREAM_EVENT_TYPES = new Set([
-  'init',
-  'message',
-  'tool_use',
-  'tool_result',
-  'result',
-  'error',
-  'stats',
-]);
-
-function isGeminiStreamJsonEvent(parsed: any): boolean {
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && GEMINI_STREAM_EVENT_TYPES.has(parsed.type);
-}
-
 function oneLine(value: unknown): string {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -365,7 +347,6 @@ function normalizeAntigravityMessage(stdout: string): string {
 
 export class PeekEventExtractor {
   private pending = '';
-  private geminiAssistantBuffer = '';
   private readonly includeToolCalls: boolean;
   private readonly source: 'stdout' | 'stderr';
   private readonly toolMemory = new Map<string, ToolCallMemory>();
@@ -407,7 +388,6 @@ export class PeekEventExtractor {
       }
     }
 
-    events.push(...this.flushGeminiAssistantBuffer(observedAt));
     events.push(...this.flushForgePendingTool(observedAt, options.terminal === true));
     return events;
   }
@@ -431,7 +411,6 @@ export class PeekEventExtractor {
         events.push(...this.extractParsedEvent(JSON.parse(line), observedAt));
       } catch {
         debugLog(`[Debug] Skipping invalid peek JSON line: ${line}`);
-        events.push(...this.flushGeminiAssistantBuffer(observedAt));
       }
     }
 
@@ -508,59 +487,7 @@ export class PeekEventExtractor {
   }
 
   private extractParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
-    if (this.agent === 'gemini') {
-      const events = this.extractGeminiParsedEvent(parsed, observedAt);
-      return events;
-    }
-
     return extractPeekEventsFromParsedEvent(this.agent, parsed, observedAt, this.includeToolCalls, this.toolMemory);
-  }
-
-  private extractGeminiParsedEvent(parsed: any, observedAt: string): PeekEvent[] {
-    if (isGeminiAssistantMessageEvent(parsed)) {
-      this.geminiAssistantBuffer += parsed.content;
-      return [];
-    }
-
-    const events = this.flushGeminiAssistantBuffer(observedAt);
-
-    if (this.includeToolCalls && parsed.type === 'tool_use') {
-      const event = createToolCallEvent({
-        ts: observedAt,
-        phase: 'started',
-        id: parsed.tool_id,
-        tool: parsed.tool_name || parsed.name || 'tool_use',
-        command: parsed.parameters?.command,
-      });
-      rememberToolCall(event, this.toolMemory);
-      events.push(event);
-    } else if (this.includeToolCalls && parsed.type === 'tool_result') {
-      events.push(createRememberedCompletion({
-        ts: observedAt,
-        id: parsed.tool_id,
-        memory: this.toolMemory,
-        fallbackTool: parsed.tool_name || parsed.name || 'tool_result',
-        status: parsed.status,
-        defaultStatus: 'unknown',
-      }));
-    }
-
-    return events;
-  }
-
-  private flushGeminiAssistantBuffer(observedAt: string): PeekEvent[] {
-    if (this.agent !== 'gemini' || !this.geminiAssistantBuffer) {
-      return [];
-    }
-
-    const text = this.geminiAssistantBuffer;
-    this.geminiAssistantBuffer = '';
-
-    if (!text.trim()) {
-      return [];
-    }
-
-    return [{ kind: 'message', ts: observedAt, text }];
   }
 
   private completeForgePendingTool(observedAt: string): PeekEvent[] {
@@ -755,111 +682,6 @@ export function parseClaudeOutput(stdout: string): any {
   } catch (e) {
     debugLog(`[Debug] Failed to parse Claude NDJSON output: ${e}`);
     return null;
-  }
-
-  return null;
-}
-
-export function parseGeminiOutput(stdout: string): any {
-  if (!stdout) return null;
-
-  try {
-    const parsed = JSON.parse(stdout.trim());
-    if (!isGeminiStreamJsonEvent(parsed)) {
-      return parsed;
-    }
-  } catch (e) {
-    debugLog(`[Debug] Failed to parse Gemini JSON output: ${e}`);
-  }
-
-  let sessionId: string | null = null;
-  let assistantBuffer = '';
-  let lastMessage: string | null = null;
-  let stats: any = null;
-  const toolsById = new Map<string, any>();
-  const toolsWithoutId: any[] = [];
-  const flushAssistantMessage = () => {
-    if (assistantBuffer.trim()) {
-      lastMessage = assistantBuffer;
-    }
-    assistantBuffer = '';
-  };
-
-  for (const line of stdout.split('\n')) {
-    if (!line.trim()) {
-      continue;
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(line);
-    } catch (e) {
-      debugLog(`[Debug] Skipping invalid Gemini stream-json line: ${line}`);
-      flushAssistantMessage();
-      continue;
-    }
-
-    if (parsed.type === 'init' && typeof parsed.session_id === 'string' && parsed.session_id) {
-      sessionId = parsed.session_id;
-      continue;
-    }
-
-    if (isGeminiAssistantMessageEvent(parsed)) {
-      assistantBuffer += parsed.content;
-      continue;
-    }
-
-    flushAssistantMessage();
-
-    if (parsed.type === 'result') {
-      if (parsed.stats) {
-        stats = parsed.stats;
-      }
-      continue;
-    }
-
-    if (parsed.type === 'tool_use') {
-      const tool = {
-        tool: parsed.tool_name || parsed.name || 'tool_use',
-        input: parsed.parameters ?? parsed.input ?? null,
-        output: null,
-        status: null,
-      };
-      if (typeof parsed.tool_id === 'string' && parsed.tool_id) {
-        toolsById.set(parsed.tool_id, tool);
-      } else {
-        toolsWithoutId.push(tool);
-      }
-      continue;
-    }
-
-    if (parsed.type === 'tool_result') {
-      const toolId = typeof parsed.tool_id === 'string' ? parsed.tool_id : '';
-      const tool = toolId ? toolsById.get(toolId) : null;
-      if (tool) {
-        tool.output = parsed.output ?? parsed.result ?? null;
-        tool.status = parsed.status ?? null;
-      } else {
-        toolsWithoutId.push({
-          tool: 'tool_result',
-          input: null,
-          output: parsed.output ?? parsed.result ?? null,
-          status: parsed.status ?? null,
-        });
-      }
-    }
-  }
-
-  flushAssistantMessage();
-  const tools = [...toolsById.values(), ...toolsWithoutId];
-
-  if (lastMessage || sessionId || stats || tools.length > 0) {
-    return {
-      message: lastMessage,
-      session_id: sessionId,
-      stats: stats || undefined,
-      tools: tools.length > 0 ? tools : undefined,
-    };
   }
 
   return null;

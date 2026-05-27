@@ -14,7 +14,7 @@ context:
 
 ## Intent
 
-**Problem:** Antigravity CLI 已发布并在本机验证可通过 `agy --print` 非交互执行，但项目当前只支持 Claude、Codex、Gemini、Forge、OpenCode，MCP 客户端无法通过统一后台任务接口调用 Antigravity。
+**Problem:** Antigravity CLI 已发布并在本机验证可通过 `agy --print` 非交互执行，但项目当时只支持 Claude、Codex、Gemini、Forge、OpenCode，MCP 客户端无法通过统一后台任务接口调用 Antigravity。当前项目已移除 Gemini CLI 支持，本归档中的 Gemini 仅描述该历史基线。
 
 **Approach:** 将 Antigravity 作为现有 `run/list_processes/get_result/wait/peek/doctor/models` 链路中的第 6 类 agent 接入，复用当前 MCP-only 架构、进程管理、路径解析和结果包装机制。首版采用保守集成：`model: "antigravity"` 路由到 `agy --dangerously-skip-permissions --add-dir <workFolder> --print-timeout 5m --print <prompt>`，不新增独立 MCP tool，不引入新依赖。
 
@@ -70,7 +70,7 @@ context:
 - Given `model: "antigravity"` 和 `session_id`, when 构造命令, then 参数包含 `--conversation <session_id>`。
 - Given `model: "antigravity"` 和任意 `reasoning_effort`, when 调用 `run`, then 返回参数错误且不启动子进程。
 - Given Antigravity stdout 为纯文本, when 调用 `get_result` 或 `wait`, then compact 结果能解析出可读 `message`，解析失败不会导致查询崩溃。
-- Given 现有 Claude/Codex/Gemini/Forge/OpenCode 测试输入, when 运行单元测试, then 现有 agent 命令构造、输出解析和 MCP 契约保持兼容。
+- Given 现有 Claude/Codex/Forge/OpenCode 测试输入, when 运行单元测试, then 现有 agent 命令构造、输出解析和 MCP 契约保持兼容；旧 Gemini 输入保持显式拒绝。
 
 ## Spec Change Log
 

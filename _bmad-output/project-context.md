@@ -63,7 +63,7 @@ _本文件记录 AI 代理在本项目中实现代码时必须遵守的关键规
 - MCP stdio 契约测试使用 `src/__tests__/utils/mcp-client.ts`，通过构建后的 `dist/server.js` 启动真实 server。
 - 测试 server 启动时要清空 `VITEST` 环境变量，否则 `src/server.ts` 不会自动运行 `runMcpServer()`。
 - 涉及 SIGINT listener 的测试依赖 `src/__tests__/setup-unit.ts` 清理新增 listener；新增 server 实例测试不要留下进程级监听器。
-- 外部 CLI 行为必须用 mock CLI 脚本或 mocked `spawn` 覆盖，不要在单元测试中依赖本机真实 Claude/Codex/Gemini/Forge/OpenCode/Antigravity 登录态。
+- 外部 CLI 行为必须用 mock CLI 脚本或 mocked `spawn` 覆盖，不要在单元测试中依赖本机真实 Claude/Codex/Forge/OpenCode/Antigravity 登录态。
 - 修改 MCP tool schema、模型列表、响应形状或 CLI 参数构造时，必须更新对应契约/构造测试，尤其是 `mcp-contract.test.ts`、`cli-builder.test.ts`、`process-management.test.ts`。
 - `peek` 相关测试必须断言不泄露原始工具输出或敏感 stdout/stderr，只允许返回自然语言消息和规范化工具调用摘要。
 - 完成代码改动后至少运行 `npm run build` 与 `npm run test:unit`；涉及 stdio MCP 契约或构建产物行为时再运行 `npm test`。
@@ -101,7 +101,8 @@ _本文件记录 AI 代理在本项目中实现代码时必须遵守的关键规
 - 不要把 `prompt` 和 `prompt_file` 同时设为合法；二者必须且只能提供一个。
 - 不要允许相对路径形式的自定义 CLI 环境变量值，例如 `./claude` 或 `foo/bar`；只允许简单命令名或绝对路径。
 - 不要对 Codex 传 `max` reasoning effort；`max` 只适用于 Claude，Codex 只支持 `low|medium|high|xhigh`。
-- 不要给 Gemini、Forge、OpenCode、Antigravity 传 `reasoning_effort`；这些 agent 当前不支持该参数。
+- 不要给 Forge、OpenCode、Antigravity 传 `reasoning_effort`；这些 agent 当前不支持该参数。
+- 不要恢复 Gemini CLI 支持；旧的 `gemini-*` 和 `gemini-ultra` 输入应保持显式拒绝。
 - 不要放宽 OpenCode 动态模型校验；`oc-<provider/model>` 不能有前后空白，provider 和 model 都不能为空。
 - 不要在 `peek` 返回 tool result 原文、命令 stdout/stderr 或历史累计输出；这会破坏短窗口观察与敏感输出隔离语义。
 - 不要假设所有 CLI 都只从 stdout 输出结构化 JSON；Codex 需要合并 stdout/stderr 解析，OpenCode 失败时需要保留原始输出。

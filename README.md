@@ -1,6 +1,6 @@
 # agent-bridge-mcp
 
-> MCP-only server for running local Claude, Codex, Gemini, Forge, OpenCode, and Antigravity CLI agents as background jobs.
+> MCP-only server for running local Claude, Codex, Forge, OpenCode, and Antigravity CLI agents as background jobs.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-339933)](./package.json)
@@ -8,7 +8,7 @@
 
 **English** | [简体中文](./README.zh-CN.md)
 
-`agent-bridge-mcp` lets an MCP client delegate work to AI coding CLIs already installed on your machine. It does not call model APIs directly. Instead, it starts local Claude, Codex, Gemini, Forge, OpenCode, or Antigravity CLI processes in the background, returns a PID immediately, and exposes MCP tools to inspect, wait for, peek at, terminate, and clean up those jobs.
+`agent-bridge-mcp` lets an MCP client delegate work to AI coding CLIs already installed on your machine. It does not call model APIs directly. Instead, it starts local Claude, Codex, Forge, OpenCode, or Antigravity CLI processes in the background, returns a PID immediately, and exposes MCP tools to inspect, wait for, peek at, terminate, and clean up those jobs.
 
 The package has one executable entry point:
 
@@ -26,7 +26,7 @@ This server bridges that gap:
 - Return immediately with a PID instead of waiting for completion.
 - Query compact or verbose results later.
 - Observe short windows of live natural-language output with `peek`.
-- Use one MCP contract across Claude, Codex, Gemini, Forge, OpenCode, and Antigravity.
+- Use one MCP contract across Claude, Codex, Forge, OpenCode, and Antigravity.
 - Keep live process handles in memory and persist lightweight process metadata/log paths for recovery across MCP server restarts.
 
 ## What It Is Not
@@ -45,12 +45,13 @@ The server can launch these local tools:
 
 - Claude CLI
 - Codex CLI
-- Gemini CLI
 - Forge CLI
 - OpenCode CLI
 - Antigravity CLI
 
 You must install, configure, and sign in to the CLIs you plan to use before calling `run`. `doctor` only checks whether binaries can be resolved and executed; it does not check account state.
+
+Gemini CLI support has been removed because that CLI is no longer maintained. Legacy `gemini-*` models and `gemini-ultra` are rejected instead of being routed to another agent.
 
 ## Requirements
 
@@ -273,7 +274,6 @@ Lists supported model names, aliases, Antigravity entrypoint, and OpenCode dynam
 
 - `claude-ultra` -> Claude `opus`, with default `reasoning_effort=max`
 - `codex-ultra` -> Codex `gpt-5.5`, with default `reasoning_effort=xhigh`
-- `gemini-ultra` -> Gemini `gemini-3.1-pro-preview`
 
 ### Standard Models
 
@@ -296,14 +296,6 @@ Codex:
 - `gpt-5.3-codex`
 - `gpt-5.3-codex-spark`
 - `gpt-5.2`
-
-Gemini:
-
-- `gemini-2.5-pro`
-- `gemini-2.5-flash`
-- `gemini-3.1-pro-preview`
-- `gemini-3-pro-preview`
-- `gemini-3-flash-preview`
 
 Forge:
 
@@ -346,7 +338,6 @@ Example OpenCode DeepSeek v4 Pro model:
 
 - Claude: `low`, `medium`, `high`, `xhigh`, `max`
 - Codex: `low`, `medium`, `high`, `xhigh`
-- Gemini: not supported
 - Forge: not supported
 - OpenCode: not supported
 - Antigravity: not supported
@@ -359,34 +350,11 @@ The optional `session_id` parameter is passed to the selected CLI using that CLI
 
 - Claude: resume with forked session behavior.
 - Codex: `exec resume <session_id>`.
-- Gemini: resume flag.
 - Forge: conversation ID.
 - OpenCode: `--session`.
 - Antigravity: `--conversation <session_id>` in print mode.
 
 Session behavior still depends on the installed CLI version and its own storage model.
-
-## Gemini Image Prompts
-
-Gemini CLI can reference images from the prompt, for example `@image.png`. Set `workFolder` to the directory containing the image, or use a path Gemini can resolve:
-
-```json
-{
-  "model": "gemini-2.5-pro",
-  "workFolder": "/absolute/path/to/assets",
-  "prompt": "Analyze @image.png and report the UI hierarchy issues."
-}
-```
-
-You can also keep a larger prompt in a file:
-
-```json
-{
-  "model": "gemini-2.5-pro",
-  "workFolder": "/absolute/path/to/assets",
-  "prompt_file": "prompt.md"
-}
-```
 
 ## CLI Path Configuration
 
@@ -396,7 +364,6 @@ Override a CLI command or absolute path with environment variables:
 
 - `CLAUDE_CLI_NAME`
 - `CODEX_CLI_NAME`
-- `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
 - `ANTIGRAVITY_CLI_NAME`
@@ -420,7 +387,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
+Local AI CLI Processes     claude / codex / forge / opencode / agy
 ```
 
 Core modules:

@@ -18,7 +18,6 @@ describe('cli-utils doctor status', () => {
     process.env = { ...originalEnv };
     delete process.env.CLAUDE_CLI_NAME;
     delete process.env.CODEX_CLI_NAME;
-    delete process.env.GEMINI_CLI_NAME;
     delete process.env.FORGE_CLI_NAME;
     delete process.env.OPENCODE_CLI_NAME;
     delete process.env.ANTIGRAVITY_CLI_NAME;

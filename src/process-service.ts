@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { buildCliCommand, type BuildCliCommandOptions } from './cli-builder.js';
-import { parseAntigravityOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseGeminiOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
+import { parseAntigravityOutput, parseClaudeOutput, parseCodexOutput, parseForgeOutput, parseOpenCodeOutput, PeekEventExtractor } from './parsers.js';
 import {
   appendPeekEvents,
   buildNotFoundPeekProcess,
@@ -15,7 +15,7 @@ import { ProcessRegistry, type ProcessRegistryRecord } from './process-registry.
 import { buildProcessResult } from './process-result.js';
 import { getWaitTimeoutConfig, type WaitTimeoutMode } from './wait-config.js';
 
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'antigravity';
+export type AgentType = 'claude' | 'codex' | 'forge' | 'opencode' | 'antigravity';
 export type ProcessStatus = 'running' | 'completed' | 'failed';
 
 interface TrackedProcess {
@@ -71,9 +71,6 @@ function parseAgentOutput(agent: AgentType, stdout: string, stderr: string): any
 
   if (agent === 'claude') {
     return parseClaudeOutput(stdout);
-  }
-  if (agent === 'gemini') {
-    return parseGeminiOutput(stdout);
   }
   if (agent === 'forge') {
     return parseForgeOutput(stdout);

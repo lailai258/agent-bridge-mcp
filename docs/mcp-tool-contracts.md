@@ -47,7 +47,8 @@
 - `reasoning_effort` 只支持 Claude 和 Codex。
 - Claude 支持 `low`、`medium`、`high`、`xhigh`、`max`。
 - Codex 支持 `low`、`medium`、`high`、`xhigh`。
-- Gemini、Forge、OpenCode、Antigravity 不支持 `reasoning_effort`。
+- Forge、OpenCode、Antigravity 不支持 `reasoning_effort`。
+- Gemini CLI 已移除；`gemini-*` 和 `gemini-ultra` 输入必须返回参数错误，不得静默路由到其他 agent。
 
 ### 返回
 
@@ -207,7 +208,7 @@ verbose 结果额外包含：
 
 ## `doctor`
 
-检查 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI 的二进制可用性与路径解析状态。
+检查 Claude、Codex、Forge、OpenCode、Antigravity CLI 的二进制可用性与路径解析状态。
 
 ### 参数
 
@@ -239,7 +240,6 @@ verbose 结果额外包含：
 
 - `claude-ultra`：解析为 `opus`，默认 `reasoning_effort=max`。
 - `codex-ultra`：解析为 `gpt-5.5`，默认 `reasoning_effort=xhigh`。
-- `gemini-ultra`：解析为 `gemini-3.1-pro-preview`。
 
 ### OpenCode 动态模型
 

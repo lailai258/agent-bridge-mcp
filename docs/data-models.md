@@ -32,7 +32,7 @@ server 重启后，内存中的 ChildProcess 句柄会丢失；PID、stdout/stde
 - `prompt`：实际传给外部 CLI 的提示词。
 - `workFolder`：解析后的工作目录。
 - `model`：用户传入的模型名或别名。
-- `toolType`：实际 agent 类型，取值为 `claude`、`codex`、`gemini`、`forge`、`opencode`、`antigravity`。
+- `toolType`：实际 agent 类型，取值为 `claude`、`codex`、`forge`、`opencode`、`antigravity`。
 - `startTime`：进程启动 ISO 时间。
 - `stdout`：累计 stdout 文本。
 - `stderr`：累计 stderr 文本。
@@ -132,11 +132,10 @@ verbose 模式额外返回：
 
 - Claude 标准模型列表。
 - Codex 标准模型列表。
-- Gemini 标准模型列表。
 - Forge 模型入口。
 - OpenCode 默认入口。
 - Antigravity 入口。
-- 模型别名：`claude-ultra`、`codex-ultra`、`gemini-ultra`。
+- 模型别名：`claude-ultra`、`codex-ultra`。
 - OpenCode 动态模型后端说明：`oc-<provider/model>`。
 
 ## Peek 事件模型

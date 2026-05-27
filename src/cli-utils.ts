@@ -19,12 +19,11 @@ export interface CliBinaryStatus {
   error?: string;
 }
 
-export type CliBinaryName = 'claude' | 'codex' | 'gemini' | 'forge' | 'opencode' | 'antigravity';
+export type CliBinaryName = 'claude' | 'codex' | 'forge' | 'opencode' | 'antigravity';
 
 export interface CliPaths {
   claude: string;
   codex: string;
-  gemini: string;
   forge: string;
   opencode: string;
   antigravity: string;
@@ -39,7 +38,6 @@ export interface CliDoctorStatus {
   };
   claude: CliBinaryStatus;
   codex: CliBinaryStatus;
-  gemini: CliBinaryStatus;
   forge: CliBinaryStatus;
   opencode: CliBinaryStatus;
   antigravity: CliBinaryStatus;
@@ -221,12 +219,7 @@ function getCliBinaryConfig(name: CliBinaryName): {
     };
   }
 
-  return {
-    envVarName: 'GEMINI_CLI_NAME',
-    customCliName: process.env.GEMINI_CLI_NAME,
-    defaultCliName: 'gemini',
-    localInstallPath: join(homedir(), '.gemini', 'local', 'gemini'),
-  };
+  throw new Error(`Unsupported CLI binary: ${name}`);
 }
 
 function getCliBinaryStatus(name: CliBinaryName): CliBinaryStatus {
@@ -243,17 +236,10 @@ export function getCliDoctorStatus(): CliDoctorStatus {
     },
     claude: getCliBinaryStatus('claude'),
     codex: getCliBinaryStatus('codex'),
-    gemini: getCliBinaryStatus('gemini'),
     forge: getCliBinaryStatus('forge'),
     opencode: getCliBinaryStatus('opencode'),
     antigravity: getCliBinaryStatus('antigravity'),
   };
-}
-
-export function findGeminiCli(): string {
-  debugLog('[Debug] Attempting to find Gemini CLI...');
-  const status = getCliBinaryStatus('gemini');
-  return getCliCommandOrThrow(status);
 }
 
 export function findCodexCli(): string {

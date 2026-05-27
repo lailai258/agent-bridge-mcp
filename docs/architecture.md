@@ -17,7 +17,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
+Local AI CLI Processes     claude / codex / forge / opencode / agy
 ```
 
 ## 模块边界
@@ -79,7 +79,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 
 职责：
 
-- 解析 Claude、Codex、Gemini、Forge、OpenCode、Antigravity 的输出格式。
+- 解析 Claude、Codex、Forge、OpenCode、Antigravity 的输出格式。
 - 构造 compact / verbose 结果。
 - 提取短窗口 `peek` 消息和规范化工具调用事件。
 - 限制 `peek` 返回内容，避免泄露原始工具输出。
@@ -91,7 +91,7 @@ Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
 职责：
 
 - 维护标准模型列表。
-- 维护 `claude-ultra`、`codex-ultra`、`gemini-ultra` 别名。
+- 维护 `claude-ultra`、`codex-ultra` 别名。
 - 为 MCP tool 描述和 `models` tool 生成统一 payload。
 
 ## 运行模型
@@ -124,7 +124,6 @@ completed/failed -> removed   cleanup_processes 清理
 
 - Claude CLI
 - Codex CLI
-- Gemini CLI
 - Forge CLI
 - OpenCode CLI
 - Antigravity CLI

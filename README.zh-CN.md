@@ -1,6 +1,6 @@
 # agent-bridge-mcp
 
-> MCP-only 服务，用于把本机 Claude、Codex、Gemini、Forge、OpenCode 和 Antigravity CLI 作为后台任务运行。
+> MCP-only 服务，用于把本机 Claude、Codex、Forge、OpenCode 和 Antigravity CLI 作为后台任务运行。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20.19.0%20%7C%7C%20%3E%3D22.12.0-339933)](./package.json)
@@ -8,7 +8,7 @@
 
 [English](./README.md) | **简体中文**
 
-`agent-bridge-mcp` 允许 MCP 客户端把任务委派给本机已经安装的 AI 编程 CLI。它不直接调用模型 API，而是启动本机 Claude、Codex、Gemini、Forge、OpenCode 或 Antigravity CLI 后台子进程，立即返回 PID，并提供 MCP 工具来查询、等待、观察、终止和清理这些任务。
+`agent-bridge-mcp` 允许 MCP 客户端把任务委派给本机已经安装的 AI 编程 CLI。它不直接调用模型 API，而是启动本机 Claude、Codex、Forge、OpenCode 或 Antigravity CLI 后台子进程，立即返回 PID，并提供 MCP 工具来查询、等待、观察、终止和清理这些任务。
 
 包内唯一可执行入口是：
 
@@ -26,7 +26,7 @@ agent-bridge-mcp
 - 立即返回 PID，而不是等待任务结束。
 - 后续按需查询 compact 或 verbose 结果。
 - 使用 `peek` 观察短时间窗口内的实时自然语言输出。
-- 用同一套 MCP 契约屏蔽 Claude、Codex、Gemini、Forge、OpenCode、Antigravity 的参数差异。
+- 用同一套 MCP 契约屏蔽 Claude、Codex、Forge、OpenCode、Antigravity 的参数差异。
 - 运行中的进程句柄保存在当前 server 内存中，同时持久化轻量进程元数据和日志路径，支持 server 重启后恢复查询。
 
 ## 它不是什么
@@ -45,12 +45,13 @@ server 可以启动以下本机工具：
 
 - Claude CLI
 - Codex CLI
-- Gemini CLI
 - Forge CLI
 - OpenCode CLI
 - Antigravity CLI
 
 调用 `run` 前，你需要自行安装、配置并登录计划使用的 CLI。`doctor` 只检查二进制是否能解析和执行，不检查账号状态。
+
+Gemini CLI 已移除，因为该 CLI 已不再维护。旧的 `gemini-*` 模型和 `gemini-ultra` 会被明确拒绝，不会被路由到其他 agent。
 
 ## 运行要求
 
@@ -273,7 +274,6 @@ server 会立即返回：
 
 - `claude-ultra` -> Claude `opus`，默认 `reasoning_effort=max`
 - `codex-ultra` -> Codex `gpt-5.5`，默认 `reasoning_effort=xhigh`
-- `gemini-ultra` -> Gemini `gemini-3.1-pro-preview`
 
 ### 标准模型
 
@@ -296,14 +296,6 @@ Codex：
 - `gpt-5.3-codex`
 - `gpt-5.3-codex-spark`
 - `gpt-5.2`
-
-Gemini：
-
-- `gemini-2.5-pro`
-- `gemini-2.5-flash`
-- `gemini-3.1-pro-preview`
-- `gemini-3-pro-preview`
-- `gemini-3-flash-preview`
 
 Forge：
 
@@ -346,7 +338,6 @@ OpenCode DeepSeek v4 Pro 示例：
 
 - Claude：`low`、`medium`、`high`、`xhigh`、`max`
 - Codex：`low`、`medium`、`high`、`xhigh`
-- Gemini：不支持
 - Forge：不支持
 - OpenCode：不支持
 - Antigravity：不支持
@@ -359,34 +350,11 @@ OpenCode DeepSeek v4 Pro 示例：
 
 - Claude：使用 forked session 语义恢复。
 - Codex：`exec resume <session_id>`。
-- Gemini：resume flag。
 - Forge：conversation ID。
 - OpenCode：`--session`。
 - Antigravity：print 模式下使用 `--conversation <session_id>`。
 
 具体会话行为仍取决于已安装 CLI 的版本和它自己的存储模型。
-
-## Gemini 图片提示词
-
-Gemini CLI 可以在 prompt 中引用图片，例如 `@image.png`。将 `workFolder` 指向图片所在目录，或使用 Gemini 可解析的路径：
-
-```json
-{
-  "model": "gemini-2.5-pro",
-  "workFolder": "/absolute/path/to/assets",
-  "prompt": "Analyze @image.png and report the UI hierarchy issues."
-}
-```
-
-也可以把较长提示词放入文件：
-
-```json
-{
-  "model": "gemini-2.5-pro",
-  "workFolder": "/absolute/path/to/assets",
-  "prompt_file": "prompt.md"
-}
-```
 
 ## CLI 路径配置
 
@@ -396,7 +364,6 @@ Gemini CLI 可以在 prompt 中引用图片，例如 `@image.png`。将 `workFol
 
 - `CLAUDE_CLI_NAME`
 - `CODEX_CLI_NAME`
-- `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
 - `ANTIGRAVITY_CLI_NAME`
@@ -420,7 +387,7 @@ Runtime Process Layer      src/process-service.ts
   ↓
 CLI Adapter Layer          src/cli-builder.ts / src/cli-utils.ts
   ↓
-Local AI CLI Processes     claude / codex / gemini / forge / opencode / agy
+Local AI CLI Processes     claude / codex / forge / opencode / agy
 ```
 
 核心模块：

@@ -8,8 +8,9 @@ const CLAUDE_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 const OPENCODE_MODEL_ERROR = 'Invalid OpenCode model. Expected exact syntax oc-<provider/model>, for example oc-opencode-go/deepseek-v4-pro.';
 const ANTIGRAVITY_PRINT_TIMEOUT = '5m';
+const GEMINI_REMOVED_ERROR = 'Gemini CLI support has been removed.';
 
-type Agent = 'codex' | 'claude' | 'gemini' | 'forge' | 'opencode' | 'antigravity';
+type Agent = 'codex' | 'claude' | 'forge' | 'opencode' | 'antigravity';
 
 interface ModelSelection {
   agent: Agent;
@@ -29,9 +30,6 @@ function getStandardAgentForModel(model: string): Exclude<Agent, 'opencode'> {
   }
   if (model.startsWith('gpt-')) {
     return 'codex';
-  }
-  if (model.startsWith('gemini')) {
-    return 'gemini';
   }
   return 'claude';
 }
@@ -65,6 +63,10 @@ function extractOpenCodeModel(rawModel: string): string {
 }
 
 function resolveModelSelection(rawModel: string): ModelSelection {
+  if (isRemovedGeminiModel(rawModel)) {
+    throw new Error(GEMINI_REMOVED_ERROR);
+  }
+
   if (rawModel === 'opencode') {
     return {
       agent: 'opencode',
@@ -93,7 +95,15 @@ export function resolveModelAlias(model: string): string {
   return MODEL_ALIASES[model] || model;
 }
 
+function isRemovedGeminiModel(model: string): boolean {
+  return model.trim().toLowerCase().startsWith('gemini');
+}
+
 export function getReasoningEffort(model: string, rawValue: unknown): string {
+  if (isRemovedGeminiModel(model)) {
+    throw new Error(GEMINI_REMOVED_ERROR);
+  }
+
   if (typeof rawValue !== 'string') {
     return '';
   }
@@ -121,11 +131,6 @@ export function getReasoningEffort(model: string, rawValue: unknown): string {
   }
   if (agent === 'antigravity') {
     throw new Error('reasoning_effort is not supported for antigravity.');
-  }
-  if (agent === 'gemini') {
-    throw new Error(
-      'reasoning_effort is only supported for Claude and Codex models.'
-    );
   }
   if (agent === 'claude' && !CLAUDE_REASONING_EFFORTS.has(normalized)) {
     throw new Error(
@@ -236,19 +241,6 @@ export function buildCliCommand(options: BuildCliCommandOptions): CliCommand {
     }
 
     args.push('--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', '--json', prompt);
-  } else if (agent === 'gemini') {
-    cliPath = options.cliPaths.gemini;
-    args = ['-y', '--output-format', 'stream-json'];
-
-    if (options.session_id && typeof options.session_id === 'string') {
-      args.push('-r', options.session_id);
-    }
-
-    if (resolvedModel) {
-      args.push('--model', resolvedModel);
-    }
-
-    args.push(prompt);
   } else if (agent === 'forge') {
     cliPath = options.cliPaths.forge;
     args = ['-C', cwd];

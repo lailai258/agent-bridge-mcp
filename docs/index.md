@@ -7,7 +7,7 @@
 
 ## 项目概览
 
-`agent-bridge-mcp` 是 MCP-only server，用于通过 MCP tools 启动和管理本机 Claude、Codex、Gemini、Forge、OpenCode、Antigravity CLI 后台任务。项目不直接调用模型 API，不提供人类 CLI 子命令；运行中句柄在内存中，进程元数据和日志路径写入本地注册表。
+`agent-bridge-mcp` 是 MCP-only server，用于通过 MCP tools 启动和管理本机 Claude、Codex、Forge、OpenCode、Antigravity CLI 后台任务。项目不直接调用模型 API，不提供人类 CLI 子命令；运行中句柄在内存中，进程元数据和日志路径写入本地注册表。
 
 ## 快速参考
 

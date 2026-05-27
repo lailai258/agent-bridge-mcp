@@ -10,12 +10,13 @@
 - 按需安装并登录本机 AI CLI：
   - Claude CLI
   - Codex CLI
-  - Gemini CLI
   - Forge CLI
   - OpenCode CLI
   - Antigravity CLI
 
 本项目只检查 CLI 二进制路径与可执行性，不负责登录、模型权限或条款确认。
+
+Gemini CLI 已移除且不应恢复；相关旧模型输入需要保持显式拒绝。
 
 ## 安装
 
@@ -117,7 +118,6 @@ npm_config_cache="/private/tmp/agent-bridge-mcp-npm-cache" npm pack --dry-run
 
 - `CLAUDE_CLI_NAME`
 - `CODEX_CLI_NAME`
-- `GEMINI_CLI_NAME`
 - `FORGE_CLI_NAME`
 - `OPENCODE_CLI_NAME`
 - `ANTIGRAVITY_CLI_NAME`

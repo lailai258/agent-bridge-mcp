@@ -2,7 +2,7 @@
   "name": "agent-bridge-mcp-server",
   "version": "0.1.4",
   "mcpName": "io.github.lailai258/agent-bridge-mcp-server",
-  "description": "MCP-only server for running local Claude, Codex, Gemini, Forge, OpenCode, and Antigravity CLI agents as background jobs",
+  "description": "MCP-only server for running local Claude, Codex, Forge, OpenCode, and Antigravity CLI agents as background jobs",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -56,7 +56,6 @@
     "model-context-protocol",
     "claude",
     "codex",
-    "gemini",
     "forge",
     "opencode",
     "antigravity",
